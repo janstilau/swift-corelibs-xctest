@@ -115,6 +115,8 @@ open class XCTestCase: XCTest {
 
     /// Invoking a test performs its setUp, invocation, and tearDown. In
     /// general this should not be called directly.
+    // XCTest 可以认为是, Template Method 这个模式很突出的使用.
+    // 各主步骤, 有着固定的算法结构. 子类通过编写各子步骤的自定义代码, 来进行各自的业务测试.
     open func invokeTest() {
         performSetUpSequence()
 

@@ -12,7 +12,7 @@
 //
 
 public extension XCTestCase {
-
+    
     /// Creates a point of synchronization in the flow of a test. Only one
     /// "wait" can be active at any given time, but multiple discrete sequences
     /// of { expectations -> wait } can be chained together. The related
@@ -50,23 +50,23 @@ public extension XCTestCase {
         if expectations.isEmpty {
             return recordFailure(description: "API violation - call made to wait without any expectations having been set.", at: SourceLocation(file: file, line: line), expected: false)
         }
-
+        
         let waiter = XCTWaiter(delegate: self)
         currentWaiter = waiter
-
+        
         let waiterResult = waiter.wait(for: expectations, timeout: timeout, file: file, line: line)
-
+        
         currentWaiter = nil
-
+        
         cleanUpExpectations()
-
+        
         // The handler is invoked regardless of whether the test passed.
         if let handler = handler {
             let error = (waiterResult == .completed) ? nil : XCTestError(.timeoutWhileWaiting)
             handler(error)
         }
     }
-
+    
     /// Wait on an array of expectations for up to the specified timeout, and optionally specify whether they
     /// must be fulfilled in the given order. May return early based on fulfillment of the waited on expectations.
     ///
@@ -87,10 +87,10 @@ public extension XCTestCase {
     func wait(for expectations: [XCTestExpectation], timeout: TimeInterval, enforceOrder: Bool = false, file: StaticString = #file, line: Int = #line) {
         let waiter = XCTWaiter(delegate: self)
         waiter.wait(for: expectations, timeout: timeout, enforceOrder: enforceOrder, file: file, line: line)
-
+        
         cleanUpExpectations(expectations)
     }
-
+    
     /// Creates and returns an expectation associated with the test case.
     ///
     /// - Parameter description: This string will be displayed in the test log
@@ -116,7 +116,7 @@ public extension XCTestCase {
         addExpectation(expectation)
         return expectation
     }
-
+    
     /// Creates and returns an expectation for a notification.
     ///
     /// - Parameter notificationName: The name of the notification the
@@ -137,7 +137,7 @@ public extension XCTestCase {
         addExpectation(expectation)
         return expectation
     }
-
+    
     /// Creates and returns an expectation for a notification.
     ///
     /// - Parameter notificationName: The name of the notification the
@@ -155,7 +155,7 @@ public extension XCTestCase {
     @discardableResult func expectation(forNotification notificationName: String, object: Any? = nil, notificationCenter: NotificationCenter = .default, file: StaticString = #file, line: Int = #line, handler: XCTNSNotificationExpectation.Handler? = nil) -> XCTestExpectation {
         return expectation(forNotification: Notification.Name(rawValue: notificationName), object: object, notificationCenter: notificationCenter, file: file, line: line, handler: handler)
     }
-
+    
     /// Creates and returns an expectation that is fulfilled if the predicate
     /// returns true when evaluated with the given object. The expectation
     /// periodically evaluates the predicate and also may use notifications or
@@ -184,7 +184,7 @@ public extension XCTestCase {
         addExpectation(expectation)
         return expectation
     }
-
+    
 }
 
 /// A block to be invoked when a call to wait times out or has had all
@@ -196,28 +196,28 @@ public extension XCTestCase {
 public typealias XCWaitCompletionHandler = (Error?) -> ()
 
 extension XCTestCase: XCTWaiterDelegate {
-
+    
     public func waiter(_ waiter: XCTWaiter, didTimeoutWithUnfulfilledExpectations unfulfilledExpectations: [XCTestExpectation]) {
         let expectationDescription = unfulfilledExpectations.map { $0.expectationDescription }.joined(separator: ", ")
         let failureDescription = "Asynchronous wait failed - Exceeded timeout of \(waiter.timeout) seconds, with unfulfilled expectations: \(expectationDescription)"
         recordFailure(description: failureDescription, at: waiter.waitSourceLocation ?? .unknown, expected: true)
     }
-
+    
     public func waiter(_ waiter: XCTWaiter, fulfillmentDidViolateOrderingConstraintsFor expectation: XCTestExpectation, requiredExpectation: XCTestExpectation) {
         let failureDescription = "Failed due to expectation fulfilled in incorrect order: requires '\(requiredExpectation.expectationDescription)', actually fulfilled '\(expectation.expectationDescription)'"
         recordFailure(description: failureDescription, at: expectation.fulfillmentSourceLocation ?? .unknown, expected: true)
     }
-
+    
     public func waiter(_ waiter: XCTWaiter, didFulfillInvertedExpectation expectation: XCTestExpectation) {
         let failureDescription = "Asynchronous wait failed - Fulfilled inverted expectation '\(expectation.expectationDescription)'"
         recordFailure(description: failureDescription, at: expectation.fulfillmentSourceLocation ?? .unknown, expected: true)
     }
-
+    
     public func nestedWaiter(_ waiter: XCTWaiter, wasInterruptedByTimedOutWaiter outerWaiter: XCTWaiter) {
         let failureDescription = "Asynchronous waiter \(waiter) failed - Interrupted by timeout of containing waiter \(outerWaiter)"
         recordFailure(description: failureDescription, at: waiter.waitSourceLocation ?? .unknown, expected: true)
     }
-
+    
 }
 
 internal extension XCTestCase {
@@ -228,10 +228,10 @@ internal extension XCTestCase {
         guard let expectationForFileLineReporting = orderedUnwaitedExpectations.first else {
             return
         }
-
+        
         let expectationDescriptions = orderedUnwaitedExpectations.map { "'\($0.expectationDescription)'" }.joined(separator: ", ")
         let failureDescription = "Failed due to unwaited expectation\(orderedUnwaitedExpectations.count > 1 ? "s" : "") \(expectationDescriptions)"
-
+        
         recordFailure(
             description: failureDescription,
             at: expectationForFileLineReporting.creationSourceLocation,
