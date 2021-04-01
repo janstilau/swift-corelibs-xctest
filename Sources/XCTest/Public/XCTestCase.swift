@@ -1,26 +1,12 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTestCase.swift
-//  Base class for test cases
-//
-
-/// A block with the test code to be invoked when the test runs.
-///
-/// - Parameter testCase: the test case associated with the current test code.
+// 这个闭包, 就是 Invocation 的作用.
+// Invocation 是设置一个 target, 然后调用 invoke 方法. invoke 方法会调用对应的 selector.
+// 这个闭包, 是传入一个 instance, 在闭包内部逻辑, 封装了对于各个成员函数的调用.
+// 具体的生成过程, 应该在
+// public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () throws -> Void)]) -> XCTestCaseEntry
+// 中.
 public typealias XCTestCaseClosure = (XCTestCase) throws -> Void
 
-/// This is a compound type used by `XCTMain` to represent tests to run. It combines an
-/// `XCTestCase` subclass type with the list of test case methods to invoke on the class.
-/// This type is intended to be produced by the `testCase` helper function.
-/// - seealso: `testCase`
-/// - seealso: `XCTMain`
+// 一个 TestCase 对象. 挂钩了要测试类的类型, 各个测试方法, 以及对于各个测试方法调用的闭包.
 public typealias XCTestCaseEntry = (testCaseClass: XCTestCase.Type, allTests: [(String, XCTestCaseClosure)])
 
 // A global pointer to the currently running test case. This is required in
@@ -33,9 +19,9 @@ internal var XCTCurrentTestCase: XCTestCase?
 /// - seealso: `XCTMain`
 open class XCTestCase: XCTest {
     private let testClosure: XCTestCaseClosure
-
+    
     private var skip: XCTSkip?
-
+    
     /// The name of the test case, consisting of its class name and the method
     /// name it will run.
     open override var name: String {
@@ -43,31 +29,31 @@ open class XCTestCase: XCTest {
     }
     /// A private setter for the name of this test case.
     private var _name: String
-
+    
     open override var testCaseCount: Int {
         return 1
     }
-
+    
     internal var currentWaiter: XCTWaiter?
-
+    
     /// The set of expectations made upon this test case.
     private var _allExpectations = [XCTestExpectation]()
-
+    
     internal var expectations: [XCTestExpectation] {
         return XCTWaiter.subsystemQueue.sync {
             return _allExpectations
         }
     }
-
+    
     internal func addExpectation(_ expectation: XCTestExpectation) {
         precondition(Thread.isMainThread, "\(#function) must be called on the main thread")
         precondition(currentWaiter == nil, "API violation - creating an expectation while already in waiting mode.")
-
+        
         XCTWaiter.subsystemQueue.sync {
             _allExpectations.append(expectation)
         }
     }
-
+    
     internal func cleanUpExpectations(_ expectationsToCleanUp: [XCTestExpectation]? = nil) {
         XCTWaiter.subsystemQueue.sync {
             if let expectationsToReset = expectationsToCleanUp {
@@ -83,19 +69,19 @@ open class XCTestCase: XCTest {
             }
         }
     }
-
+    
     /// An internal object implementing performance measurements.
     internal var _performanceMeter: PerformanceMeter?
-
+    
     open override var testRunClass: AnyClass? {
         return XCTestCaseRun.self
     }
-
+    
     open override func perform(_ run: XCTestRun) {
         guard let testRun = run as? XCTestCaseRun else {
             fatalError("Wrong XCTestRun class.")
         }
-
+        
         XCTCurrentTestCase = self
         testRun.start()
         invokeTest()
@@ -103,7 +89,7 @@ open class XCTestCase: XCTest {
         testRun.stop()
         XCTCurrentTestCase = nil
     }
-
+    
     /// The designated initializer for SwiftXCTest's XCTestCase.
     /// - Note: Like the designated initializer for Apple XCTest's XCTestCase,
     ///   `-[XCTestCase initWithInvocation:]`, it's rare for anyone outside of
@@ -112,14 +98,12 @@ open class XCTestCase: XCTest {
         _name = "\(type(of: self)).\(name)"
         self.testClosure = testClosure
     }
-
-    /// Invoking a test performs its setUp, invocation, and tearDown. In
-    /// general this should not be called directly.
-    // XCTest 可以认为是, Template Method 这个模式很突出的使用.
-    // 各主步骤, 有着固定的算法结构. 子类通过编写各子步骤的自定义代码, 来进行各自的业务测试.
+    
+    // Invoking a test performs its setup, invocation, and teardown. In general this should not be called directly.
     open func invokeTest() {
         performSetUpSequence()
-
+        
+        // 在, OC 版本里面, 是 invocation.invoke 执行的各自的方法. 在这里, 使用了 testClosure
         do {
             if skip == nil {
                 try testClosure(self)
@@ -128,7 +112,7 @@ open class XCTestCase: XCTest {
             if error.xct_shouldRecordAsTestFailure {
                 recordFailure(for: error)
             }
-
+            
             if error.xct_shouldRecordAsTestSkip {
                 if let skip = error as? XCTSkip {
                     self.skip = skip
@@ -137,14 +121,14 @@ open class XCTestCase: XCTest {
                 }
             }
         }
-
+        
         if let skip = skip {
             testRun?.recordSkip(description: skip.summary, sourceLocation: skip.sourceLocation)
         }
-
+        
         performTearDownSequence()
     }
-
+    
     /// Records a failure in the execution of the test and is used by all test
     /// assertions.
     /// - Parameter description: The description of the failure being reported.
@@ -161,9 +145,9 @@ open class XCTestCase: XCTest {
             inFile: filePath,
             atLine: lineNumber,
             expected: expected)
-
+        
         _performanceMeter?.abortMeasuring()
-
+        
         // FIXME: Apple XCTest does not throw a fatal error and crash the test
         //        process, it merely prevents the remainder of a testClosure
         //        from expecting after it's been determined that it has already
@@ -174,12 +158,12 @@ open class XCTestCase: XCTest {
             fatalError("Terminating execution due to test failure")
         }
     }
-
+    
     // Convenience for recording failure using a SourceLocation
     func recordFailure(description: String, at sourceLocation: SourceLocation, expected: Bool) {
         recordFailure(withDescription: description, inFile: sourceLocation.file, atLine: Int(sourceLocation.line), expected: expected)
     }
-
+    
     // Convenience for recording a failure for a caught Error
     private func recordFailure(for error: Error) {
         recordFailure(
@@ -188,19 +172,19 @@ open class XCTestCase: XCTest {
             atLine: 0,
             expected: false)
     }
-
+    
     /// Setup method called before the invocation of any test method in the
     /// class.
     open class func setUp() {}
-
+    
     /// Teardown method called after the invocation of every test method in the
     /// class.
     open class func tearDown() {}
-
+    
     private var teardownBlocks: [() -> Void] = []
     private var teardownBlocksDequeued: Bool = false
     private let teardownBlocksQueue: DispatchQueue = DispatchQueue(label: "org.swift.XCTest.XCTestCase.teardownBlocks")
-
+    
     /// Registers a block of teardown code to be run after the current test
     /// method ends.
     open func addTeardownBlock(_ block: @escaping () -> Void) {
@@ -209,7 +193,8 @@ open class XCTestCase: XCTest {
             self.teardownBlocks.append(block)
         }
     }
-
+    
+    // Before each test begins, XCTest calls setUpWithError(), followed by setUp(). If state preparation might throw errors, override setUpWithError(). XCTest marks the test failed when it catches errors, or skipped when it catches XCTSkip.
     private func performSetUpSequence() {
         do {
             try setUpWithError()
@@ -217,7 +202,7 @@ open class XCTestCase: XCTest {
             if error.xct_shouldRecordAsTestFailure {
                 recordFailure(for: error)
             }
-
+            
             if error.xct_shouldSkipTestInvocation {
                 if let skip = error as? XCTSkip {
                     self.skip = skip
@@ -226,15 +211,15 @@ open class XCTestCase: XCTest {
                 }
             }
         }
-
+        
         setUp()
     }
-
+    
     private func performTearDownSequence() {
         runTeardownBlocks()
-
+        
         tearDown()
-
+        
         do {
             try tearDownWithError()
         } catch {
@@ -243,7 +228,7 @@ open class XCTestCase: XCTest {
             }
         }
     }
-
+    
     private func runTeardownBlocks() {
         let blocks = teardownBlocksQueue.sync { () -> [() -> Void] in
             self.teardownBlocksDequeued = true
@@ -251,12 +236,12 @@ open class XCTestCase: XCTest {
             self.teardownBlocks = []
             return blocks
         }
-
+        
         for block in blocks.reversed() {
             block()
         }
     }
-
+    
     open var continueAfterFailure: Bool {
         get {
             return true
@@ -270,27 +255,25 @@ open class XCTestCase: XCTest {
     }
 }
 
-/// Wrapper function allowing an array of static test case methods to fit
-/// the signature required by `XCTMain`
-/// - seealso: `XCTMain`
+// 传入一个类型的所有类型方法, 返回一个 XCTestCaseEntry
 public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () throws -> Void)]) -> XCTestCaseEntry {
     let tests: [(String, XCTestCaseClosure)] = allTests.map { ($0.0, test($0.1)) }
     return (T.self, tests)
 }
 
-/// Wrapper function for the non-throwing variant of tests.
-/// - seealso: `XCTMain`
+// 传入一个类型的所有类型方法, 返回一个 XCTestCaseEntry
 public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () -> Void)]) -> XCTestCaseEntry {
     let tests: [(String, XCTestCaseClosure)] = allTests.map { ($0.0, test($0.1)) }
     return (T.self, tests)
 }
 
+// 从类型中, 抽取成员方法的过程.
+// 就是传入对象, 返回成员方法, 然后调用成员方法.
 private func test<T: XCTestCase>(_ testFunc: @escaping (T) -> () throws -> Void) -> XCTestCaseClosure {
     return { testCaseType in
         guard let testCase = testCaseType as? T else {
             fatalError("Attempt to invoke test on class \(T.self) with incompatible instance type \(type(of: testCaseType))")
         }
-
         try testFunc(testCase)()
     }
 }

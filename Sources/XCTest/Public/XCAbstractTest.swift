@@ -1,3 +1,5 @@
+
+
 /// An abstract base class for testing. `XCTestCase` and `XCTestSuite` extend
 /// `XCTest` to provide for creating, managing, and executing tests. Most
 /// developers will not need to subclass `XCTest` directly.
@@ -34,6 +36,8 @@ open class XCTest {
         guard let testRunType = testRunClass as? XCTestRun.Type else {
             fatalError("XCTest.testRunClass must be a kind of XCTestRun.")
         }
+        // testRun 是收集信息的对象.
+        // 每一个 case, run 的时候, 都是创建收集器, 然后执行 perform.
         testRun = testRunType.init(test: self)
         perform(testRun!)
     }

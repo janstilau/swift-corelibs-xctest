@@ -1,23 +1,10 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTestCase+Performance.swift
-//  Methods on XCTestCase for testing the performance of code blocks.
-//
-
 public struct XCTPerformanceMetric : RawRepresentable, Equatable, Hashable {
     public let rawValue: String
-
+    
     public init(_ rawValue: String) {
         self.rawValue = rawValue
     }
-
+    
     public init(rawValue: String) {
         self.rawValue = rawValue
     }
@@ -31,14 +18,14 @@ public extension XCTPerformanceMetric {
 /// The following methods are called from within a test method to carry out 
 /// performance testing on blocks of code.
 public extension XCTestCase {
-
+    
     /// The names of the performance metrics to measure when invoking `measure(block:)`. 
     /// Returns `XCTPerformanceMetric_WallClockTime` by default. Subclasses can
     /// override this to change the behavior of `measure(block:)`
     class var defaultPerformanceMetrics: [XCTPerformanceMetric] {
         return [.wallClockTime]
     }
-
+    
     /// Call from a test method to measure resources (`defaultPerformanceMetrics`)
     /// used by the block in the current process.
     ///
@@ -68,7 +55,7 @@ public extension XCTestCase {
                        line: line,
                        for: block)
     }
-
+    
     /// Call from a test method to measure resources (XCTPerformanceMetrics) used
     /// by the block in the current process. Each metric will be measured across 
     /// calls to the block. The number of times the block will be called is undefined
@@ -117,7 +104,7 @@ public extension XCTestCase {
         guard _performanceMeter == nil else {
             return recordAPIViolation(description: "Can only record one set of metrics per test method.", file: file, line: line)
         }
-
+        
         PerformanceMeter.measureMetrics(metrics.map({ $0.rawValue }), delegate: self, file: file, line: line) { meter in
             self._performanceMeter = meter
             if automaticallyStartMeasuring {
@@ -126,7 +113,7 @@ public extension XCTestCase {
             block()
         }
     }
-
+    
     /// Call this from within a measure block to set the beginning of the critical 
     /// section. Measurement of metrics will start at this point.
     /// - Note: Whereas Apple XCTest determines the file and line number of
@@ -141,7 +128,7 @@ public extension XCTestCase {
         }
         performanceMeter.startMeasuring(file: file, line: line)
     }
-
+    
     /// Call this from within a measure block to set the ending of the critical 
     /// section. Measurement of metrics will stop at this point.
     /// - Note: Whereas Apple XCTest determines the file and line number of
@@ -165,11 +152,11 @@ extension XCTestCase: PerformanceMeterDelegate {
                       atLine: line,
                       expected: false)
     }
-
+    
     internal func recordMeasurements(results: String, file: StaticString, line: Int) {
         XCTestObservationCenter.shared.testCase(self, didMeasurePerformanceResults: results, file: file, line: line)
     }
-
+    
     internal func recordFailure(description: String, file: StaticString, line: Int) {
         recordFailure(withDescription: "failed: " + description, inFile: String(describing: file), atLine: line, expected: true)
     }

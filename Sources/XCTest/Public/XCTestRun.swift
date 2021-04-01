@@ -1,12 +1,3 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
 //  XCTestRun.swift
 //  A test run collects information about the execution of a test.
 //
@@ -26,6 +17,7 @@ open class XCTestRun {
 
     /// The number of seconds that elapsed between when the run was started and
     /// when it was stopped.
+    // 这里看, 和我们自己写的代码, 没有太大的区别
     open var totalDuration: TimeInterval {
         if let stop = stopDate, let start = startDate {
             return stop.timeIntervalSince(start)
@@ -95,7 +87,8 @@ open class XCTestRun {
             fatalError("Invalid attempt to start a test run that has " +
                        "already been stopped: \(self)")
         }
-
+        
+        // 基类 run, start 开始计时.
         startDate = Date()
     }
 

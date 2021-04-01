@@ -37,9 +37,11 @@ internal struct TestFiltering {
     static func filterTests(_ entries: [XCTestCaseEntry], filter: TestFilter) -> [XCTestCaseEntry] {
         return entries
             .map { testCaseClass, testCaseMethods in
+                // testCaseMethods 数组, 首先根据 filter 进行过滤, 组建出新的 Item
                 return (testCaseClass, testCaseMethods.filter { filter(testCaseClass, $0.0) } )
             }
             .filter { _, testCaseMethods in
+                // 然后新的 Item, 根据 testCaseMethods.isEmpty 过滤, 返回不为空的 Item
                 return !testCaseMethods.isEmpty
             }
     }

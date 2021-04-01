@@ -1,19 +1,6 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTestSuiteRun.swift
-//  A test run for an `XCTestSuite`.
-//
-
 /// A test run for an `XCTestSuite`.
 open class XCTestSuiteRun: XCTestRun {
-    /// The combined `testDuration` of each test case run in the suite.
+    // 所有的 case 的总和.
     open override var totalDuration: TimeInterval {
         return testRuns.reduce(TimeInterval(0.0)) { $0 + $1.totalDuration }
     }

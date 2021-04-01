@@ -1,22 +1,10 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTestObservationCenter.swift
-//  Notification center for test run progress events.
-//
-
 private let _sharedCenter: XCTestObservationCenter = XCTestObservationCenter()
 
 /// Provides a registry for objects wishing to be informed about progress
 /// during the course of a test run. Observers must implement the
 /// `XCTestObservation` protocol
 /// - seealso: `XCTestObservation`
+
 public class XCTestObservationCenter {
 
     private var observers = Set<ObjectWrapper<XCTestObservation>>()

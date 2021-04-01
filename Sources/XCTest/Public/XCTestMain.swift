@@ -1,35 +1,5 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTestMain.swift
-//  This is the main file for the framework. It provides the entry point function
-//  for running tests and some infrastructure for running them.
-//
-
-// Note that we are re-exporting Foundation so tests importing XCTest don't need
-// to import it themselves. This is consistent with the behavior of Apple XCTest
-#if os(macOS)
-    #if USE_FOUNDATION_FRAMEWORK
-    @_exported import Foundation
-    #else
-    @_exported import SwiftFoundation
-    #endif
-#else
-    @_exported import Foundation
-#endif
-
-#if canImport(Darwin)
-    import Darwin
-#elseif canImport(Glibc)
-    import Glibc
-#endif
-
+// 这里, 框架暴露出来的, 看起来是为了外界使用的.
+// 到底, 怎么从类里面获取对应的方法信息, 这里没有明确的写出来.
 /// Starts a test run for the specified test cases.
 ///
 /// This function will not return. If the test cases pass, then it will call `exit(EXIT_SUCCESS)`. If there is a failure, then it will call `exit(EXIT_FAILURE)`.
@@ -50,15 +20,14 @@
 ///         // etc...
 ///     }
 ///
-///     XCTMain([ testCase(TestFoo.allTests) ])
+///// testCase
+///     XCTMain([ testCase(TestFoo.allTests) ]) // testCase 定义在 XCTestCase 里面.
 ///
 /// Command line arguments can be used to select a particular test case or class to execute. For example:
 ///
 ///     ./FooTests FooTestCase/testFoo  # Run a single test case
 ///     ./FooTests FooTestCase          # Run all the tests in FooTestCase
 ///
-/// - Parameter testCases: An array of test cases run, each produced by a call to the `testCase` function
-/// - seealso: `testCase`
 public func XCTMain(_ testCases: [XCTestCaseEntry]) -> Never {
     XCTMain(testCases, arguments: CommandLine.arguments)
 }
@@ -80,8 +49,10 @@ public func XCTMain(
     // - The root `XCTestSuite` is named "Selected tests" instead of
     //   "All tests".
     // - An `XCTestSuite` representing the .xctest test bundle is not included.
+    
     let rootTestSuite: XCTestSuite
     let currentTestSuite: XCTestSuite
+    
     if executionMode.selectedTestNames == nil {
         rootTestSuite = XCTestSuite(name: "All tests")
         currentTestSuite = XCTestSuite(name: "\(testBundle.bundleURL.lastPathComponent).xctest")
@@ -92,18 +63,22 @@ public func XCTMain(
     }
 
     let filter = TestFiltering(selectedTestNames: executionMode.selectedTestNames)
+    // 这里是通道的写法, filterTests 的返回值, map, 然后 forEach, 然后在 ForEach 里面, 修改了 currentTestSuite 的值.
     TestFiltering.filterTests(testCases, filter: filter.selectedTestFilter)
-        .map(XCTestCaseSuite.init)
+        .map(XCTestCaseSuite.init) // 在这里, 根据每个类的类对象, 以及方法, 生成了一个 XCTestCaseSuite
         .forEach(currentTestSuite.addTest)
 
     switch executionMode {
     case .list(type: .humanReadable):
         TestListing(testSuite: rootTestSuite).printTestList()
+        
         exit(EXIT_SUCCESS)
     case .list(type: .json):
         TestListing(testSuite: rootTestSuite).printTestJSON()
+        
         exit(EXIT_SUCCESS)
     case let .help(invalidOption):
+        
         if let invalid = invalidOption {
             let errMsg = "Error: Invalid option \"\(invalid)\"\n"
             FileHandle.standardError.write(errMsg.data(using: .utf8) ?? Data())
@@ -111,32 +86,11 @@ public func XCTMain(
         let exeName = URL(fileURLWithPath: arguments[0]).lastPathComponent
         let sampleTest = rootTestSuite.list().first ?? "Tests.FooTestCase/testFoo"
         let sampleTests = sampleTest.prefix(while: { $0 != "/" })
-        print("""
-              Usage: \(exeName) [OPTION]
-                     \(exeName) [TESTCASE]
-              Run and report results of test cases.
-
-              With no OPTION or TESTCASE, runs all test cases.
-
-              OPTIONS:
-
-              -l, --list-test              List tests line by line to standard output
-                  --dump-tests-json        List tests in JSON to standard output
-
-              TESTCASES:
-
-                 Run a single test
-
-                     > \(exeName) \(sampleTest)
-
-                 Run all the tests in \(sampleTests)
-
-                     > \(exeName) \(sampleTests)
-              """)
         exit(invalidOption == nil ? EXIT_SUCCESS : EXIT_FAILURE)
     case .run(selectedTestNames: _):
         // Add a test observer that prints test progress to stdout.
         let observationCenter = XCTestObservationCenter.shared
+        // 将, 监听器加载 observationCenter 中.
         for observer in observers {
             observationCenter.addTestObserver(observer)
         }
@@ -145,6 +99,7 @@ public func XCTMain(
         rootTestSuite.run()
         observationCenter.testBundleDidFinish(testBundle)
 
+        // 然后判断, 是否有失败的个数.
         exit(rootTestSuite.testRun!.totalFailureCount == 0 ? EXIT_SUCCESS : EXIT_FAILURE)
     }
 }

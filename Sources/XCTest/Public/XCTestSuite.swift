@@ -1,12 +1,3 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
 //  XCTestSuite.swift
 //  A collection of test cases.
 //
@@ -34,6 +25,7 @@ open class XCTestSuite: XCTest {
         return tests.reduce(0) { $0 + $1.testCaseCount }
     }
 
+    // Suite 容器, 返回自己作为 testRunClass
     open override var testRunClass: AnyClass? {
         return XCTestSuiteRun.self
     }
@@ -43,12 +35,18 @@ open class XCTestSuite: XCTest {
             fatalError("Wrong XCTestRun class.")
         }
 
+        // run start, 基类会记录一下开始的时间, 然后, 两个子类的自定义代码, 都通知了一下 observerCenter.
         run.start()
+        // setUp 方法, 基类空方法, case 子类, 应自定义. Suite 子类, 调用了记录的 Type 的 setup 类方法.
+        // 这就是为什么 类方法会调用一次的原因,  是 suite 进行调用的.
         setUp()
+        // 自己记录的各个 case 开始进行 run. 各个case 的 run 里面, 会建立自己的 xctestRun, 调用自己的任务的 perform.
         for test in tests {
             test.run()
+            // suite 的 testRun 要负责收集各个 case 的 run 信息.
             testRun.addTestRun(test.testRun!)
         }
+        // 收尾工作, 基类空方法, case 子类, 应自定义. Suite 子类, 调用了记录的 Type 的 TearDown 方法.
         tearDown()
         run.stop()
     }

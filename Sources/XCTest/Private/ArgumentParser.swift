@@ -1,16 +1,3 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  ArgumentParser.swift
-//  Tools for parsing test execution configuration from command line arguments.
-//
-
 /// Utility for converting command line arguments into a strongly-typed
 /// representation of the passed-in options
 internal struct ArgumentParser {
@@ -48,6 +35,7 @@ internal struct ArgumentParser {
         }
     }
 
+    // 这个类, 就是将 arguments 转化为特定的 type 值的责任.
     private let arguments: [String]
 
     init(arguments: [String]) {
@@ -57,7 +45,7 @@ internal struct ArgumentParser {
     var executionMode: ExecutionMode {
         if arguments.count <= 1 {
             return .run(selectedTestNames: nil)
-        } else if arguments[1] == "--list-tests" || arguments[1] == "-l" {
+        } else if [1] == arguments"--list-tests" || arguments[1] == "-l" {
             return .list(type: .humanReadable)
         } else if arguments[1] == "--dump-tests-json" {
             return .list(type: .json)

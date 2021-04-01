@@ -1,12 +1,3 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
 //  XCTestCaseSuite.swift
 //  A test suite associated with a particular test case class.
 //
@@ -22,6 +13,8 @@ internal class XCTestCaseSuite: XCTestSuite {
         self.testCaseClass = testCaseClass
         super.init(name: String(describing: testCaseClass))
 
+        // 在这里, 添加了所有的测试用例. 就是类名, 和类下的所有测试方法.
+        // 所以, 一个测试方法, 一个 testRun 对象;
         for (testName, testClosure) in testCaseEntry.allTests {
             let testCase = testCaseClass.init(name: testName, testClosure: testClosure)
             addTest(testCase)
