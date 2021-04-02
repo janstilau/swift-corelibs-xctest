@@ -16,6 +16,7 @@ open class XCTestCaseRun: XCTestRun {
             inFile: filePath,
             atLine: lineNumber,
             expected: expected)
+        // 增加了对于通知的处理.
         XCTestObservationCenter.shared.testCase(
             testCase,
             didFailWithDescription: description,
@@ -26,6 +27,7 @@ open class XCTestCaseRun: XCTestRun {
     override func recordSkip(description: String, sourceLocation: SourceLocation?) {
         super.recordSkip(description: description, sourceLocation: sourceLocation)
         
+        // 通知 XCTestObservationCenter 发生了错误.
         XCTestObservationCenter.shared.testCase(
             testCase,
             wasSkippedWithDescription: description,

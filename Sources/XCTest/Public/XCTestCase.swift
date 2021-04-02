@@ -6,8 +6,9 @@
 // 中.
 public typealias XCTestCaseClosure = (XCTestCase) throws -> Void
 
-// 一个 TestCase 对象. 挂钩了要测试类的类型, 各个测试方法, 以及对于各个测试方法调用的闭包.
-public typealias XCTestCaseEntry = (testCaseClass: XCTestCase.Type, allTests: [(String, XCTestCaseClosure)])
+// 一个类所代表的所有测试方法模型. 挂钩了要测试类的类型, 各个测试方法, 以及对于各个测试方法调用的闭包.
+public typealias XCTestCaseEntry = (testCaseClass: XCTestCase.Type,
+                                    allTests: [(String, XCTestCaseClosure)])
 
 // A global pointer to the currently running test case. This is required in
 // order for XCTAssert functions to report failures.
@@ -27,7 +28,6 @@ open class XCTestCase: XCTest {
     open override var name: String {
         return _name
     }
-    /// A private setter for the name of this test case.
     private var _name: String
     
     open override var testCaseCount: Int {
@@ -129,16 +129,7 @@ open class XCTestCase: XCTest {
         performTearDownSequence()
     }
     
-    /// Records a failure in the execution of the test and is used by all test
-    /// assertions.
-    /// - Parameter description: The description of the failure being reported.
-    /// - Parameter filePath: The file path to the source file where the failure
-    ///   being reported was encountered.
-    /// - Parameter lineNumber: The line number in the source file at filePath
-    ///   where the failure being reported was encountered.
-    /// - Parameter expected: `true` if the failure being reported was the
-    ///   result of a failed assertion, `false` if it was the result of an
-    ///   uncaught exception.
+    // 当一个 testCase 出错了之后, 要记录到 testRun 里面, 然后, 判断是不是应该继续执行.
     open func recordFailure(withDescription description: String, inFile filePath: String, atLine lineNumber: Int, expected: Bool) {
         testRun?.recordFailure(
             withDescription: description,
@@ -146,6 +137,7 @@ open class XCTestCase: XCTest {
             atLine: lineNumber,
             expected: expected)
         
+        // 当发生错误之后, 就停掉性能的监控.
         _performanceMeter?.abortMeasuring()
         
         // FIXME: Apple XCTest does not throw a fatal error and crash the test
@@ -155,6 +147,7 @@ open class XCTestCase: XCTest {
         // FIXME: No regression tests exist for this feature. We may break it
         //        without ever realizing.
         if !continueAfterFailure {
+            // 是否发生错误之后, 就立马进行退出.
             fatalError("Terminating execution due to test failure")
         }
     }
@@ -194,7 +187,8 @@ open class XCTestCase: XCTest {
         }
     }
     
-    // Before each test begins, XCTest calls setUpWithError(), followed by setUp(). If state preparation might throw errors, override setUpWithError(). XCTest marks the test failed when it catches errors, or skipped when it catches XCTSkip.
+    // Before each test begins, XCTest calls setUpWithError(), followed by setUp(). If state preparation might throw errors, override setUpWithError().
+    // XCTest marks the test failed when it catches errors, or skipped when it catches XCTSkip.
     private func performSetUpSequence() {
         do {
             try setUpWithError()
@@ -216,6 +210,7 @@ open class XCTestCase: XCTest {
     }
     
     private func performTearDownSequence() {
+        // 先执行加入到 Teardown 里面的各个 bock.
         runTeardownBlocks()
         
         tearDown()
@@ -230,7 +225,8 @@ open class XCTestCase: XCTest {
     }
     
     private func runTeardownBlocks() {
-        let blocks = teardownBlocksQueue.sync { () -> [() -> Void] in
+        let blocks = teardownBlocksQueue.sync {
+            () -> [() -> Void] in
             self.teardownBlocksDequeued = true
             let blocks = self.teardownBlocks
             self.teardownBlocks = []

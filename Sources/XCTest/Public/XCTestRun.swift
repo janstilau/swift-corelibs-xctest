@@ -5,19 +5,25 @@
 /// A test run collects information about the execution of a test. Failures in
 /// explicit test assertions are classified as "expected", while failures from
 /// unrelated or uncaught exceptions are classified as "unexpected".
+/*
+ 这个类, 就是收集测试过程中的信息的.
+ 不符合 Assert 的, 被认为是 expectedFaile.
+ 在执行测试方法过程中, throw 了 error 的, 被认为是 unexpected Faile.
+ 这两种, 都被认为是 Fail.
+ 
+ XCTestRun 有两个子类,
+ XCTestCaseRun, 就是一个测试用例, 也就是一个类的一个 test 方法的信息.
+ XCTestSuiteRun, 是一个容器, 里面有很多的 XCTestRun, 有可能是 XCTestCaseRun, 也有可能是 XCTestSuiteRun. 复合模式.
+ */
 open class XCTestRun {
     /// The test instance provided when the test run was initialized.
     public let test: XCTest
 
-    /// The time at which the test run was started, or nil.
     open private(set) var startDate: Date?
-
-    /// The time at which the test run was stopped, or nil.
     open private(set) var stopDate: Date?
 
-    /// The number of seconds that elapsed between when the run was started and
-    /// when it was stopped.
-    // 这里看, 和我们自己写的代码, 没有太大的区别
+    // 如果, 测试经历了完整的过程, 就 end - start, 不然就是 0
+    // optinal 的状态标志, 让我们少了很多的标志成员变量的设置.
     open var totalDuration: TimeInterval {
         if let stop = stopDate, let start = startDate {
             return stop.timeIntervalSince(start)
@@ -26,19 +32,14 @@ open class XCTestRun {
         }
     }
 
-    /// In an `XCTestCase` run, the number of seconds that elapsed between when
-    /// the run was started and when it was stopped. In an `XCTestSuite` run,
-    /// the combined `testDuration` of each test case in the suite.
     open var testDuration: TimeInterval {
         return totalDuration
     }
 
-    /// The number of tests in the run.
     open var testCaseCount: Int {
         return test.testCaseCount
     }
 
-    /// The number of test executions recorded during the run.
     open private(set) var executionCount: Int = 0
 
     /// The number of test skips recorded during the run.
@@ -108,17 +109,7 @@ open class XCTestRun {
         stopDate = Date()
     }
 
-    /// Records a failure in the execution of the test for this test run. Must
-    /// not be called unless the run has been started. Must not be called if the
-    /// test run has been stopped.
-    /// - Parameter description: The description of the failure being reported.
-    /// - Parameter filePath: The file path to the source file where the failure
-    ///   being reported was encountered or nil if unknown.
-    /// - Parameter lineNumber: The line number in the source file at filePath
-    ///   where the failure being reported was encountered.
-    /// - Parameter expected: `true` if the failure being reported was the
-    ///   result of a failed assertion, `false` if it was the result of an
-    ///   uncaught exception.
+    // 当, 发生了错误之后, 将错误的信息, 记录到 testRun 里面.
     func recordFailure(withDescription description: String, inFile filePath: String?, atLine lineNumber: Int, expected: Bool) {
         func failureLocation() -> String {
             if let filePath = filePath {
@@ -137,6 +128,7 @@ open class XCTestRun {
                        "that has already been stopped: \(failureLocation())")
         }
 
+        // 根据是否是 expected, 增加不同的 int 成员变量.
         if expected {
             failureCount += 1
         } else {

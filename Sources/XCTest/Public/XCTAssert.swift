@@ -52,9 +52,10 @@ private enum _XCTAssertion {
 
 private enum _XCTAssertionResult {
     case success
-    case expectedFailure(String?)
-    case unexpectedFailure(Swift.Error)
+    case expectedFailure(String?) // 执行顺利完成, 和 Assert 想要的结果不符, 算作 expectedFailure
+    case unexpectedFailure(Swift.Error) // 在执行的过程中, 发生了 error, 算作 unexpectedFailure
 
+    // 所执行函数, 有没有正常执行完毕.
     var isExpected: Bool {
         switch self {
         case .unexpectedFailure(_): return false
@@ -66,6 +67,7 @@ private enum _XCTAssertionResult {
         let explanation: String
         switch self {
         case .success: explanation = "passed"
+        // 这两个 case 一样, 一个有值, 一个没有值.
         case .expectedFailure(let details?): explanation = "failed: \(details)"
         case .expectedFailure(_): explanation = "failed"
         case .unexpectedFailure(let error): explanation = "threw error \"\(error)\""
@@ -79,11 +81,17 @@ private enum _XCTAssertionResult {
     }
 }
 
-private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion, message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line, expression: () throws -> _XCTAssertionResult) {
+// 这是一个全局函数, 所以, 需要通过取 XCTCurrentTestCase 这个全局量, 来定位到发生了问题的 case 到底是哪个.
+private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion,
+                                   message: @autoclosure () -> String = "",
+                                   file: StaticString = #file,
+                                   line: UInt = #line,
+                                   expression: () throws -> _XCTAssertionResult) {
     let result: _XCTAssertionResult
     do {
         result = try expression()
     } catch {
+        // 如果, 发生了 error, 那么就是 unexpectedFailure
         result = .unexpectedFailure(error)
     }
 
@@ -359,8 +367,14 @@ public func XCTUnwrap<T>(_ expression: @autoclosure () throws -> T?, _ message: 
     }
 }
 
-public func XCTAssertTrue(_ expression: @autoclosure () throws -> Bool, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
-    _XCTEvaluateAssertion(.`true`, message: message(), file: file, line: line) {
+public func XCTAssertTrue(_ expression: @autoclosure () throws -> Bool,
+                          _ message: @autoclosure () -> String = "",
+                          file: StaticString = #file,
+                          line: UInt = #line) {
+    _XCTEvaluateAssertion(.`true`,
+                          message: message(),
+                          file: file,
+                          line: line) {
         let value = try expression()
         if value {
             return .success
