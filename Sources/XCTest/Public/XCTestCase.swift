@@ -1,34 +1,61 @@
-// 这个闭包, 就是 Invocation 的作用.
-// Invocation 是设置一个 target, 然后调用 invoke 方法. invoke 方法会调用对应的 selector.
-// 这个闭包, 是传入一个 instance, 在闭包内部逻辑, 封装了对于各个成员函数的调用.
-// 具体的生成过程, 应该在
-// public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () throws -> Void)]) -> XCTestCaseEntry
-// 中.
 public typealias XCTestCaseClosure = (XCTestCase) throws -> Void
 
 // 一个类所代表的所有测试方法模型. 挂钩了要测试类的类型, 各个测试方法, 以及对于各个测试方法调用的闭包.
 public typealias XCTestCaseEntry = (testCaseClass: XCTestCase.Type,
                                     allTests: [(String, XCTestCaseClosure)])
 
-// A global pointer to the currently running test case. This is required in
-// order for XCTAssert functions to report failures.
+// 传入一个类型的所有类型方法, 返回一个 XCTestCaseEntry
+public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () throws -> Void)]) -> XCTestCaseEntry {
+    let tests: [(String, XCTestCaseClosure)] = allTests.map { ($0.0, test($0.1)) }
+    return (T.self, tests)
+}
+
+// 传入一个类型的所有类型方法, 返回一个 XCTestCaseEntry
+public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () -> Void)]) -> XCTestCaseEntry {
+    let tests: [(String, XCTestCaseClosure)] = allTests.map { ($0.0, test($0.1)) }
+    return (T.self, tests)
+}
+
+private func test<T: XCTestCase>(_ testFunc: @escaping (T) -> () throws -> Void) -> XCTestCaseClosure {
+    return { testCaseType in
+        guard let testCase = testCaseType as? T else {
+            fatalError("Attempt to invoke test on class \(T.self) with incompatible instance type \(type(of: testCaseType))")
+        }
+        try testFunc(testCase)()
+    }
+}
+
+
+
+
+
+
+
+
+
+
 internal var XCTCurrentTestCase: XCTestCase?
 
-/// An instance of this class represents an individual test case which can be
-/// run by the framework. This class is normally subclassed and extended with
-/// methods containing the tests to run.
-/// - seealso: `XCTMain`
+// 这个类, 其实有点难理解.
+// 在 XCTest Run 的时候, 一个 XCTestCase 对象, 其实代表了它其中一个 test 方法. XCMain 会将里面, 所有 test 开头的方法抽取出来, 有 5 个方法, 就创建 5 个对象.
+// 但是我们定义的时候, 是将这 5 个方法, 都当做成员方法写在一起的, 所以, 从之前的经验我们判断, 是一个对象, 包含了五个方法的测试.
 open class XCTestCase: XCTest {
+    
+    // designate, 最重要的成员, 其实就是 XCTestCaseClosure. 实际上, 这个就是代表着一个 Invocation.
+    public required init(name: String, testClosure: @escaping XCTestCaseClosure) {
+        _name = "\(type(of: self)).\(name)"
+        self.testClosure = testClosure
+    }
+    
+    private var _name: String
     private let testClosure: XCTestCaseClosure
-    
-    private var skip: XCTSkip?
-    
-    /// The name of the test case, consisting of its class name and the method
-    /// name it will run.
     open override var name: String {
         return _name
     }
-    private var _name: String
+    
+    
+    
+    private var skip: XCTSkip?
     
     open override var testCaseCount: Int {
         return 1
@@ -46,9 +73,6 @@ open class XCTestCase: XCTest {
     }
     
     internal func addExpectation(_ expectation: XCTestExpectation) {
-        precondition(Thread.isMainThread, "\(#function) must be called on the main thread")
-        precondition(currentWaiter == nil, "API violation - creating an expectation while already in waiting mode.")
-        
         XCTWaiter.subsystemQueue.sync {
             _allExpectations.append(expectation)
         }
@@ -78,10 +102,6 @@ open class XCTestCase: XCTest {
     }
     
     open override func perform(_ run: XCTestRun) {
-        guard let testRun = run as? XCTestCaseRun else {
-            fatalError("Wrong XCTestRun class.")
-        }
-        
         XCTCurrentTestCase = self
         testRun.start()
         invokeTest()
@@ -90,14 +110,6 @@ open class XCTestCase: XCTest {
         XCTCurrentTestCase = nil
     }
     
-    /// The designated initializer for SwiftXCTest's XCTestCase.
-    /// - Note: Like the designated initializer for Apple XCTest's XCTestCase,
-    ///   `-[XCTestCase initWithInvocation:]`, it's rare for anyone outside of
-    ///   XCTest itself to call this initializer.
-    public required init(name: String, testClosure: @escaping XCTestCaseClosure) {
-        _name = "\(type(of: self)).\(name)"
-        self.testClosure = testClosure
-    }
     
     // Invoking a test performs its setup, invocation, and teardown. In general this should not be called directly.
     open func invokeTest() {
@@ -105,6 +117,8 @@ open class XCTestCase: XCTest {
         
         // 在, OC 版本里面, 是 invocation.invoke 执行的各自的方法. 在这里, 使用了 testClosure
         do {
+            // 如果, setupWithError 里面发生了错误, 那么这里 skip 会有值.
+            // 也就不能调用 testClosure 了.
             if skip == nil {
                 try testClosure(self)
             }
@@ -122,6 +136,7 @@ open class XCTestCase: XCTest {
             }
         }
         
+        // 如果, skip 有值, 那么就通知 run 进行记录.
         if let skip = skip {
             testRun?.recordSkip(description: skip.summary, sourceLocation: skip.sourceLocation)
         }
@@ -131,6 +146,7 @@ open class XCTestCase: XCTest {
     
     // 当一个 testCase 出错了之后, 要记录到 testRun 里面, 然后, 判断是不是应该继续执行.
     open func recordFailure(withDescription description: String, inFile filePath: String, atLine lineNumber: Int, expected: Bool) {
+        
         testRun?.recordFailure(
             withDescription: description,
             inFile: filePath,
@@ -140,12 +156,9 @@ open class XCTestCase: XCTest {
         // 当发生错误之后, 就停掉性能的监控.
         _performanceMeter?.abortMeasuring()
         
-        // FIXME: Apple XCTest does not throw a fatal error and crash the test
-        //        process, it merely prevents the remainder of a testClosure
-        //        from expecting after it's been determined that it has already
-        //        failed. The following behavior is incorrect.
-        // FIXME: No regression tests exist for this feature. We may break it
-        //        without ever realizing.
+        // 如果, 已经记录了错误了, 是否退出测试.
+        // 默认, 是所有的 case 都会跑一次, 所以, 没有走 fatalError 让进程退出.
+        // 在 Xcode 里面, 应该就是根据各个 case 的 failure count, 判断是不是通过测试了.
         if !continueAfterFailure {
             // 是否发生错误之后, 就立马进行退出.
             fatalError("Terminating execution due to test failure")
@@ -166,29 +179,24 @@ open class XCTestCase: XCTest {
             expected: false)
     }
     
-    /// Setup method called before the invocation of any test method in the
-    /// class.
+    // 类的 setUp, tearDown
     open class func setUp() {}
-    
-    /// Teardown method called after the invocation of every test method in the
-    /// class.
     open class func tearDown() {}
     
     private var teardownBlocks: [() -> Void] = []
     private var teardownBlocksDequeued: Bool = false
     private let teardownBlocksQueue: DispatchQueue = DispatchQueue(label: "org.swift.XCTest.XCTestCase.teardownBlocks")
     
-    /// Registers a block of teardown code to be run after the current test
-    /// method ends.
     open func addTeardownBlock(_ block: @escaping () -> Void) {
         teardownBlocksQueue.sync {
-            precondition(!self.teardownBlocksDequeued, "API violation -- attempting to add a teardown block after teardown blocks have been dequeued")
             self.teardownBlocks.append(block)
         }
     }
     
-    // Before each test begins, XCTest calls setUpWithError(), followed by setUp(). If state preparation might throw errors, override setUpWithError().
-    // XCTest marks the test failed when it catches errors, or skipped when it catches XCTSkip.
+    /*
+     Before each test begins, XCTest calls setUpWithError(), followed by setUp(). If state preparation might throw errors, override setUpWithError().
+     XCTest marks the test failed when it catches errors, or skipped when it catches XCTSkip.
+     */
     private func performSetUpSequence() {
         do {
             try setUpWithError()
@@ -225,6 +233,7 @@ open class XCTestCase: XCTest {
     }
     
     private func runTeardownBlocks() {
+        // 这里, 是 Queue 的一种新语法, 提交的 Block 的返回值, 可以成为 sync 的返回值.
         let blocks = teardownBlocksQueue.sync {
             () -> [() -> Void] in
             self.teardownBlocksDequeued = true
@@ -233,6 +242,7 @@ open class XCTestCase: XCTest {
             return blocks
         }
         
+        // 反向执行.
         for block in blocks.reversed() {
             block()
         }
@@ -251,25 +261,4 @@ open class XCTestCase: XCTest {
     }
 }
 
-// 传入一个类型的所有类型方法, 返回一个 XCTestCaseEntry
-public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () throws -> Void)]) -> XCTestCaseEntry {
-    let tests: [(String, XCTestCaseClosure)] = allTests.map { ($0.0, test($0.1)) }
-    return (T.self, tests)
-}
 
-// 传入一个类型的所有类型方法, 返回一个 XCTestCaseEntry
-public func testCase<T: XCTestCase>(_ allTests: [(String, (T) -> () -> Void)]) -> XCTestCaseEntry {
-    let tests: [(String, XCTestCaseClosure)] = allTests.map { ($0.0, test($0.1)) }
-    return (T.self, tests)
-}
-
-// 从类型中, 抽取成员方法的过程.
-// 就是传入对象, 返回成员方法, 然后调用成员方法.
-private func test<T: XCTestCase>(_ testFunc: @escaping (T) -> () throws -> Void) -> XCTestCaseClosure {
-    return { testCaseType in
-        guard let testCase = testCaseType as? T else {
-            fatalError("Attempt to invoke test on class \(T.self) with incompatible instance type \(type(of: testCaseType))")
-        }
-        try testFunc(testCase)()
-    }
-}

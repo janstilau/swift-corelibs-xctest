@@ -1,6 +1,5 @@
-
-/// Prints textual representations of each XCTestObservation event to stdout.
-/// Mirrors the Apple XCTest output exactly.
+// XCode 默认的测试 Observation, 就是 XCode 里面打印消息.
+// XCode 里面的红色, 绿色是最后拿到结果之后, 根据各个 caseRun 的记录, 进行的界面显示. 和 XCTestObservation 无关.
 internal class PrintObserver: XCTestObservation {
     func testBundleWillStart(_ testBundle: Bundle) {}
 

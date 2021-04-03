@@ -1,10 +1,5 @@
-//  XCTestCaseSuite.swift
-//  A test suite associated with a particular test case class.
-//
 
-/// A test suite which is associated with a particular test case class. It will
-/// call `setUp` and `tearDown` on the class itself before and after invoking
-/// all of the test cases making up the class.
+// 和一个 class 挂钩的 XCTestCaseSuite, 根据类的信息, 进行 [test] 的填充, 并调用类的 setup, teardown 方法.
 internal class XCTestCaseSuite: XCTestSuite {
     private let testCaseClass: XCTestCase.Type
 
@@ -13,8 +8,6 @@ internal class XCTestCaseSuite: XCTestSuite {
         self.testCaseClass = testCaseClass
         super.init(name: String(describing: testCaseClass))
 
-        // 在这里, 添加了所有的测试用例. 就是类名, 和类下的所有测试方法.
-        // 所以, 一个测试方法, 一个 testRun 对象;
         for (testName, testClosure) in testCaseEntry.allTests {
             let testCase = testCaseClass.init(name: testName, testClosure: testClosure)
             addTest(testCase)

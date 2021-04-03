@@ -1,10 +1,3 @@
-//  XCTestObservation.swift
-//  Hooks for being notified about progress during a test run.
-//
-
-/// `XCTestObservation` provides hooks for being notified about progress during a
-/// test run.
-/// - seealso: `XCTestObservationCenter`
 public protocol XCTestObservation: AnyObject {
 
     /// Sent immediately before tests begin as a hook for any pre-testing setup.
@@ -52,7 +45,8 @@ public protocol XCTestObservation: AnyObject {
     func testBundleDidFinish(_ testBundle: Bundle)
 }
 
-// All `XCTestObservation` methods are optional, so empty default implementations are provided
+// 所有的协议, 都是 Optianl 的, 所以, 都提供了默认的实现.
+// Swift 通过这种方式, 实现了 Optinal, 但是, 确定哪些是 Primitive 呢
 public extension XCTestObservation {
     func testBundleWillStart(_ testBundle: Bundle) {}
     func testSuiteWillStart(_ testSuite: XCTestSuite) {}

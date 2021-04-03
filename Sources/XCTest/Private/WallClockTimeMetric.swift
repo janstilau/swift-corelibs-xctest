@@ -1,24 +1,10 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  WallClockTimeMetric.swift
-//  Performance metric measuring how long it takes code to execute
-//
-
-/// This metric uses the system uptime to keep track of how much time passes
-/// between starting and stopping measuring.
+// 系统默认性能检测器.
 internal final class WallClockTimeMetric: PerformanceMetric {
     static let name = "org.swift.XCTPerformanceMetric_WallClockTime"
 
     typealias Measurement = TimeInterval
     private var startTime: TimeInterval?
-    var measurements: [Measurement] = []
+    var measurements: [TimeInterval] = []
 
     func startMeasuring() {
         startTime = currentTime()

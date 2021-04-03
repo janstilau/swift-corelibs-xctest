@@ -1,15 +1,6 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTAssert.swift
-//
 
+// 这个 enum, 更多的是当做一个 Type 来用.
+// 将这个 type 的描述, 也就是 name, 内含在这个 Type 里面. 这样的设计, 更加的面向对象.
 private enum _XCTAssertion {
     case equal
     case equalWithAccuracy
@@ -81,7 +72,10 @@ private enum _XCTAssertionResult {
     }
 }
 
-// 这是一个全局函数, 所以, 需要通过取 XCTCurrentTestCase 这个全局量, 来定位到发生了问题的 case 到底是哪个.
+// assertion 仅仅是为了在 withDescription 生成有效的信息, 对于流程控制没有太大的关系.
+// 真正重要的, 是 expression. 如果, try expression() 发生了错误, 就是 unexpectedFailure.
+// 如果, try expression() 的结果, 是 expectedFailure, 就是不满足 assert 的语义
+// 如果, try expression() 成功了, 就是正确了.
 private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion,
                                    message: @autoclosure () -> String = "",
                                    file: StaticString = #file,
@@ -99,6 +93,7 @@ private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion,
     case .success:
         return
     default:
+        // Assert 的作用, 就在这里, 如果返回的 result 不是 success 这种 type 的, 就调用 recordFailure 方法, 这个方法, 会在 run 里面, 标记当前的这个 testCase 失败了.
         if let currentTestCase = XCTCurrentTestCase {
             currentTestCase.recordFailure(
                 withDescription: "\(result.failureDescription(assertion)) - \(message())",
@@ -109,66 +104,17 @@ private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion,
     }
 }
 
-/// This function emits a test failure if the general `Boolean` expression passed
-/// to it evaluates to `false`.
-///
-/// - Requires: This and all other XCTAssert* functions must be called from
-///   within a test method, as passed to `XCTMain`.
-///   Assertion failures that occur outside of a test method will *not* be
-///   reported as failures.
-///
-/// - Parameter expression: A boolean test. If it evaluates to `false`, the
-///   assertion fails and emits a test failure.
-/// - Parameter message: An optional message to use in the failure if the
-///   assertion fails. If no message is supplied a default message is used.
-/// - Parameter file: The file name to use in the error message if the assertion
-///   fails. Default is the file containing the call to this function. It is
-///   rare to provide this parameter when calling this function.
-/// - Parameter line: The line number to use in the error message if the
-///   assertion fails. Default is the line number of the call to this function
-///   in the calling file. It is rare to provide this parameter when calling
-///   this function.
-///
-/// - Note: It is rare to provide the `file` and `line` parameters when calling
-///   this function, although you may consider doing so when creating your own
-///   assertion functions. For example, consider the following custom assertion:
-///
-///   ```
-///   // AssertEmpty.swift
-///
-///   func AssertEmpty<T>(_ elements: [T]) {
-///       XCTAssertEqual(elements.count, 0, "Array is not empty")
-///   }
-///   ```
-///
-///  Calling this assertion will cause XCTest to report the failure occurred
-///  in the file where `AssertEmpty()` is defined, and on the line where
-///  `XCTAssertEqual` is called from within that function:
-///
-///  ```
-///  // MyFile.swift
-///
-///  AssertEmpty([1, 2, 3]) // Emits "AssertEmpty.swift:3: error: ..."
-///  ```
-///
-///  To have XCTest properly report the file and line where the assertion
-///  failed, you may specify the file and line yourself:
-///
-///  ```
-///  // AssertEmpty.swift
-///
-///  func AssertEmpty<T>(_ elements: [T], file: StaticString = #file, line: UInt = #line) {
-///      XCTAssertEqual(elements.count, 0, "Array is not empty", file: file, line: line)
-///  }
-///  ```
-///
-///  Now calling failures in `AssertEmpty` will be reported in the file and on
-///  the line that the assert function is *called*, not where it is defined.
+
 public func XCTAssert(_ expression: @autoclosure () throws -> Bool, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
     XCTAssertTrue(try expression(), message(), file: file, line: line)
 }
 
-public func XCTAssertEqual<T: Equatable>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
+// Equal, 就直接是两个值进行 == 比较了. 至于这两个值, == 到底什么逻辑, 是这个类型自己的实现.
+public func XCTAssertEqual<T: Equatable>(_ expression1: @autoclosure () throws -> T,
+                                         _ expression2: @autoclosure () throws -> T,
+                                         _ message: @autoclosure () -> String = "",
+                                         file: StaticString = #file,
+                                         line: UInt = #line) {
     _XCTEvaluateAssertion(.equal, message: message(), file: file, line: line) {
         let (value1, value2) = (try expression1(), try expression2())
         if value1 == value2 {
@@ -178,6 +124,7 @@ public func XCTAssertEqual<T: Equatable>(_ expression1: @autoclosure () throws -
         }
     }
 }
+
 
 private func areEqual<T: Numeric>(_ exp1: T, _ exp2: T, accuracy: T) -> Bool {
     // Test with equality first to handle comparing inf/-inf with itself.
@@ -190,16 +137,27 @@ private func areEqual<T: Numeric>(_ exp1: T, _ exp2: T, accuracy: T) -> Bool {
     }
 }
 
-public func XCTAssertEqual<T: FloatingPoint>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
+public func XCTAssertEqual<T: FloatingPoint>(_ expression1: @autoclosure () throws -> T,
+                                             _ expression2: @autoclosure () throws -> T,
+                                             accuracy: T,
+                                             _ message: @autoclosure () -> String = "",
+                                             file: StaticString = #file,
+                                             line: UInt = #line) {
     _XCTAssertEqual(try expression1(), try expression2(), accuracy: accuracy, message(), file: file, line: line)
 }
 
-public func XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
+public func XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -> T,
+                                       _ expression2: @autoclosure () throws -> T,
+                                       accuracy: T,
+                                       _ message: @autoclosure () -> String = "",
+                                       file: StaticString = #file,
+                                       line: UInt = #line) {
     _XCTAssertEqual(try expression1(), try expression2(), accuracy: accuracy, message(), file: file, line: line)
 }
 
 private func _XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
-    _XCTEvaluateAssertion(.equalWithAccuracy, message: message(), file: file, line: line) {
+    _XCTEvaluateAssertion(.equalWithAccuracy, message: message(), file: file, line: line)
+    {
         let (value1, value2) = (try expression1(), try expression2())
         if areEqual(value1, value2, accuracy: accuracy) {
             return .success
@@ -209,9 +167,27 @@ private func _XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -
     }
 }
 
+// 这里, 方法标记为 deprecated, 在 deprecated 方法里面, 调用了当前版本的 方法.
 @available(*, deprecated, renamed: "XCTAssertEqual(_:_:accuracy:file:line:)")
 public func XCTAssertEqualWithAccuracy<T: FloatingPoint>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
     XCTAssertEqual(try expression1(), try expression2(), accuracy: accuracy, message(), file: file, line: line)
+}
+
+public func XCTAssertTrue(_ expression: @autoclosure () throws -> Bool,
+                          _ message: @autoclosure () -> String = "",
+                          file: StaticString = #file,
+                          line: UInt = #line) {
+    _XCTEvaluateAssertion(.`true`,
+                          message: message(),
+                          file: file,
+                          line: line) {
+        let value = try expression()
+        if value {
+            return .success
+        } else {
+            return .expectedFailure(nil)
+        }
+    }
 }
 
 public func XCTAssertFalse(_ expression: @autoclosure () throws -> Bool, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
@@ -343,6 +319,7 @@ public func XCTUnwrap<T>(_ expression: @autoclosure () throws -> T?, _ message: 
     var value: T?
     var caughtErrorOptional: Swift.Error?
 
+    // 这里, 是使用 Block 的副作用, 实现的判断并且返回值的功能.
     _XCTEvaluateAssertion(.unwrap, message: message(), file: file, line: line) {
         do {
             value = try expression()
@@ -364,23 +341,6 @@ public func XCTUnwrap<T>(_ expression: @autoclosure () throws -> T?, _ message: 
         throw error
     } else {
         throw XCTestErrorWhileUnwrappingOptional()
-    }
-}
-
-public func XCTAssertTrue(_ expression: @autoclosure () throws -> Bool,
-                          _ message: @autoclosure () -> String = "",
-                          file: StaticString = #file,
-                          line: UInt = #line) {
-    _XCTEvaluateAssertion(.`true`,
-                          message: message(),
-                          file: file,
-                          line: line) {
-        let value = try expression()
-        if value {
-            return .success
-        } else {
-            return .expectedFailure(nil)
-        }
     }
 }
 

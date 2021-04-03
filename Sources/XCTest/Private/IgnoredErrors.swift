@@ -1,15 +1,3 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2019 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  IgnoredErrors.swift
-//
-
 protocol XCTCustomErrorHandling: Error {
 
     /// Whether this error should be recorded as a test failure when it is caught. Default: true.
@@ -23,6 +11,7 @@ protocol XCTCustomErrorHandling: Error {
 
 }
 
+// 都有默认实现. 所以, 上面的几个方法, 都是 Optinal 的.
 extension XCTCustomErrorHandling {
 
     var shouldRecordAsTestFailure: Bool {

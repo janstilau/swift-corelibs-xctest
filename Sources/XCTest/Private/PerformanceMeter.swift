@@ -1,12 +1,7 @@
-/// Describes a type that is capable of measuring some aspect of code performance
-/// over time.
-internal protocol PerformanceMetric {
-    /// Called once per iteration immediately before the tested code is executed. 
-    /// The metric should do whatever work is required to begin a new measurement.
-    func startMeasuring()
 
-    /// Called once per iteration immediately after the tested code is executed.
-    /// The metric should do whatever work is required to finalize measurement.
+
+internal protocol PerformanceMetric {
+    func startMeasuring()
     func stopMeasuring()
 
     /// Called once, after all measurements have been taken, to provide feedback
@@ -45,9 +40,8 @@ internal protocol PerformanceMeterDelegate {
     func recordAPIViolation(description: String, file: StaticString, line: Int)
 }
 
-/// - Bug: This class is intended to be `internal` but is public to work around
-/// a toolchain bug on Linux. See `XCTestCase._performanceMeter` for more info.
 public final class PerformanceMeter {
+    
     enum Error: Swift.Error, CustomStringConvertible {
         case noMetrics
         case unknownMetric(metricName: String)
@@ -148,7 +142,7 @@ public final class PerformanceMeter {
         for _ in (0..<numberOfIterations) {
             state = .iterationUnstarted
 
-            block(self)
+            block(self) // 真正的进行性能测试的地方.
             stopMeasuringIfNeeded()
 
             if state == .measurementAborted { return }

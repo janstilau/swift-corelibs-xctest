@@ -1,16 +1,13 @@
-//  XCTestSuite.swift
-//  A collection of test cases.
-//
 
-/// A subclass of XCTest, XCTestSuite is a collection of test cases. Based on
-/// what's passed into XCTMain(), a hierarchy of suites is built up, but
-/// XCTestSuite can also be instantiated and manipulated directly:
-///
-///     let suite = XCTestSuite(name: "My Tests")
-///     suite.addTest(myTest)
-///     suite.testCaseCount // 1
-///     suite.run()
 open class XCTestSuite: XCTest {
+    
+    // 数据部分, 一组 XCTest
+    // 因为 XCTest 是接口对象, 所以, XCTestSuite 其实是一个 Composite 层的东西.
+    // 可能里面存储的是 XCTestCase, 那么 run 的时候, 就是各个测试用例了.
+    // 也可能, 存储的是 XCTestSuite, 那么 run 的时候, 就是存储的 tests 里面的各个 test run. 例如, 一个类所有测试方法组合而成的 Suite
+    // 也可能, 是一个 BundleSuite, 那么 tests 里面, 就是各个类的 Suite. run 的时候, 就是整个 Bundle 下所有类 run了.
+    // 正是因为这样, bundle 的 run 收集了 bundle 的信息, 类的 run 手机了 类的信息, 类的测试方法 testCase 的 run, 收集了方法的信息.
+    
     open private(set) var tests = [XCTest]()
 
     /// The name of this test suite.
@@ -20,12 +17,12 @@ open class XCTestSuite: XCTest {
     /// A private setter for the name of this test suite.
     private let _name: String
 
-    /// The number of test cases in this suite.
+    // 递归调用, 每一个层级, 都能拿到代表自己层级的 count.
     open override var testCaseCount: Int {
         return tests.reduce(0) { $0 + $1.testCaseCount }
     }
 
-    // Suite 容器, 返回自己作为 testRunClass
+    // 记录 testRunClass, 使得整个类可以动态的创建 run 对象了.
     open override var testRunClass: AnyClass? {
         return XCTestSuiteRun.self
     }

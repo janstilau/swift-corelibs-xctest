@@ -5,8 +5,7 @@ internal struct SourceLocation {
 
     typealias LineNumber = UInt
 
-    /// Represents an "unknown" source location, with default values, which may be used as a fallback
-    /// when a real source location may not be known.
+    // 一个类方法, 返回常用的对象.
     static var unknown: SourceLocation = {
         return SourceLocation(file: "<unknown>", line: 0)
     }()

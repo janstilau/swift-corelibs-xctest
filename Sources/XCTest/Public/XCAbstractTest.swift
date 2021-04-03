@@ -1,64 +1,42 @@
 
-
-/// An abstract base class for testing. `XCTestCase` and `XCTestSuite` extend
-/// `XCTest` to provide for creating, managing, and executing tests. Most
-/// developers will not need to subclass `XCTest` directly.
 open class XCTest {
-    /// Test's name. Must be overridden by subclasses.
     open var name: String {
         fatalError("Must be overridden by subclasses.")
     }
     
-    /// Number of test cases. Must be overridden by subclasses.
     open var testCaseCount: Int {
         fatalError("Must be overridden by subclasses.")
     }
     
-    /// The `XCTestRun` subclass that will be instantiated when the test is run
-    /// to hold the test's results. Must be overridden by subclasses.
     open var testRunClass: AnyClass? {
         fatalError("Must be overridden by subclasses.")
     }
     
-    /// The test run object that executed the test, an instance of
-    /// testRunClass. If the test has not yet been run, this will be nil.
     open private(set) var testRun: XCTestRun? = nil
     
-    /// The method through which tests are executed. Must be overridden by
-    /// subclasses.
+    // 各个子类, 重写该方法. 完成模板模式各个 item 的覆盖.
+    // 固定会, 调用 run 的 start, 调用自己的 setup, test, teardown, 调用 run 的 stop
+    // 其中, 会记录下其中出现的各个错误.
     open func perform(_ run: XCTestRun) {
         fatalError("Must be overridden by subclasses.")
     }
     
-    /// Creates an instance of the `testRunClass` and passes it as a parameter
-    /// to `perform()`.
+    // 一个固定的模式, 根据自己的类型, 创建各自的 run, 然后调用 perform.
     open func run() {
         guard let testRunType = testRunClass as? XCTestRun.Type else {
             fatalError("XCTest.testRunClass must be a kind of XCTestRun.")
         }
-        // testRun 是收集信息的对象.
-        // 每一个 case, run 的时候, 都是创建收集器, 然后执行 perform.
         testRun = testRunType.init(test: self)
         perform(testRun!)
     }
     
-    /// Setup method called before the invocation of `setUp` and the test method
-    /// for each test method in the class.
     open func setUpWithError() throws {}
     
-    /// Setup method called before the invocation of each test method in the
-    /// class.
     open func setUp() {}
     
-    /// Teardown method called after the invocation of each test method in the
-    /// class.
     open func tearDown() {}
     
-    /// Teardown method called after the invocation of the test method and `tearDown`
-    /// for each test method in the class.
     open func tearDownWithError() throws {}
     
-    // FIXME: This initializer is required due to a Swift compiler bug on Linux.
-    //        It should be removed once the bug is fixed.
     public init() {}
 }

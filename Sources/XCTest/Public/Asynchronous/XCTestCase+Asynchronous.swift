@@ -1,16 +1,3 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2018 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTestCase+Asynchronous.swift
-//  Methods on XCTestCase for testing asynchronous operations
-//
-
 public extension XCTestCase {
     
     /// Creates a point of synchronization in the flow of a test. Only one
@@ -41,8 +28,8 @@ public extension XCTestCase {
     ///   these environments. To ensure compatibility of tests between
     ///   swift-corelibs-xctest and Apple XCTest, it is not recommended to pass
     ///   explicit values for `file` and `line`.
+    // 最常用的方法,
     func waitForExpectations(timeout: TimeInterval, file: StaticString = #file, line: Int = #line, handler: XCWaitCompletionHandler? = nil) {
-        precondition(Thread.isMainThread, "\(#function) must be called on the main thread")
         if currentWaiter != nil {
             return recordFailure(description: "API violation - calling wait on test case while already waiting.", at: SourceLocation(file: file, line: line), expected: false)
         }

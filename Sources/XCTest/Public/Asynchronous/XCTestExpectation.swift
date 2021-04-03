@@ -1,18 +1,7 @@
-// This source file is part of the Swift.org open source project
-//
-// Copyright (c) 2014 - 2018 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See http://swift.org/LICENSE.txt for license information
-// See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-//
-//
-//  XCTestExpectation.swift
-//
 
-/// Expectations represent specific conditions in asynchronous testing.
+
 open class XCTestExpectation {
-
+    
     private static var currentMonotonicallyIncreasingToken: UInt64 = 0
     private static func queue_nextMonotonicallyIncreasingToken() -> UInt64 {
         dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
@@ -22,60 +11,60 @@ open class XCTestExpectation {
     private static func nextMonotonicallyIncreasingToken() -> UInt64 {
         return XCTWaiter.subsystemQueue.sync { queue_nextMonotonicallyIncreasingToken() }
     }
-
+    
     /*
      Rules for properties
      ====================
-
+     
      XCTestExpectation has many properties, many of which require synchronization on `XCTWaiter.subsystemQueue`.
      When adding properties, use the following rules for consistency. The naming guidelines aim to allow
      property names to be as short & simple as possible, while maintaining the necessary synchronization.
-
+     
      - If property is constant (`let`), it is immutable so there is no synchronization concern.
-        - No underscore prefix on name
-        - No matching `queue_` property
-        - If it is only used within this file:
-            - `private` access
-        - If is is used outside this file but not outside the module:
-            - `internal` access
-        - If it is used outside the module:
-            - `public` or `open` access, depending on desired overridability
-
+     - No underscore prefix on name
+     - No matching `queue_` property
+     - If it is only used within this file:
+     - `private` access
+     - If is is used outside this file but not outside the module:
+     - `internal` access
+     - If it is used outside the module:
+     - `public` or `open` access, depending on desired overridability
+     
      - If property is variable (`var`), it is mutable so access to it must be synchronized.
-        - `private` access
-        - If it is only used within this file:
-            - No underscore prefix on name
-            - No matching `queue_` property
-        - If is is used outside this file:
-            - If access outside this file is always on-queue:
-                - No underscore prefix on name
-                - Matching internal `queue_` property with `.onQueue` dispatchPreconditions
-            - If access outside this file is sometimes off-queue
-                - Underscore prefix on name
-                - Matching `internal` property with `queue_` prefix and `XCTWaiter.subsystemQueue` dispatchPreconditions
-                - Matching `internal` or `public` property without underscore prefix but with `XCTWaiter.subsystemQueue` synchronization
+     - `private` access
+     - If it is only used within this file:
+     - No underscore prefix on name
+     - No matching `queue_` property
+     - If is is used outside this file:
+     - If access outside this file is always on-queue:
+     - No underscore prefix on name
+     - Matching internal `queue_` property with `.onQueue` dispatchPreconditions
+     - If access outside this file is sometimes off-queue
+     - Underscore prefix on name
+     - Matching `internal` property with `queue_` prefix and `XCTWaiter.subsystemQueue` dispatchPreconditions
+     - Matching `internal` or `public` property without underscore prefix but with `XCTWaiter.subsystemQueue` synchronization
      */
-
+    
     private var _expectationDescription: String
-
+    
     internal let creationToken: UInt64
     internal let creationSourceLocation: SourceLocation
-
+    
     private var isFulfilled = false
     private var fulfillmentToken: UInt64 = 0
     private var _fulfillmentSourceLocation: SourceLocation?
-
+    
     private var _expectedFulfillmentCount = 1
     private var numberOfFulfillments = 0
-
+    
     private var _isInverted = false
-
+    
     private var _assertForOverFulfill = false
-
+    
     private var _hasBeenWaitedOn = false
-
+    
     private var _didFulfillHandler: (() -> Void)?
-
+    
     /// A human-readable string used to describe the expectation in log output and test reports.
     open var expectationDescription: String {
         get {
@@ -85,7 +74,7 @@ open class XCTestExpectation {
             XCTWaiter.subsystemQueue.sync { queue_expectationDescription = newValue }
         }
     }
-
+    
     /// The number of times `fulfill()` must be called on the expectation in order for it
     /// to report complete fulfillment to its waiter. Default is 1.
     /// This value must be greater than 0 and is not meaningful if combined with `isInverted`.
@@ -95,14 +84,14 @@ open class XCTestExpectation {
         }
         set {
             precondition(newValue > 0, "API violation - fulfillment count must be greater than 0.")
-
+            
             XCTWaiter.subsystemQueue.sync {
                 precondition(!queue_hasBeenWaitedOn, "API violation - cannot set expectedFulfillmentCount on '\(queue_expectationDescription)' after already waiting on it.")
                 queue_expectedFulfillmentCount = newValue
             }
         }
     }
-
+    
     /// If an expectation is set to be inverted, then fulfilling it will have a similar effect as
     /// failing to fulfill a conventional expectation has, as handled by the waiter and its delegate.
     /// Furthermore, waiters that wait on an inverted expectation will allow the full timeout to elapse
@@ -118,7 +107,7 @@ open class XCTestExpectation {
             }
         }
     }
-
+    
     /// If set, calls to fulfill() after the expectation has already been fulfilled - exceeding the fulfillment
     /// count - will cause a fatal error and halt process execution. Default is false (disabled).
     ///
@@ -137,15 +126,15 @@ open class XCTestExpectation {
             }
         }
     }
-
+    
     internal var fulfillmentSourceLocation: SourceLocation? {
         return XCTWaiter.subsystemQueue.sync { _fulfillmentSourceLocation }
     }
-
+    
     internal var hasBeenWaitedOn: Bool {
         return XCTWaiter.subsystemQueue.sync { queue_hasBeenWaitedOn }
     }
-
+    
     internal var queue_expectationDescription: String {
         get {
             dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
@@ -204,7 +193,7 @@ open class XCTestExpectation {
         set {
             dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
             _hasBeenWaitedOn = newValue
-
+            
             if _hasBeenWaitedOn {
                 didBeginWaiting()
             }
@@ -220,7 +209,7 @@ open class XCTestExpectation {
             _didFulfillHandler = newValue
         }
     }
-
+    
     /// Initializes a new expectation with a description of the condition it is checking.
     ///
     /// - Parameter description: A human-readable string used to describe the condition the expectation is checking.
@@ -229,7 +218,7 @@ open class XCTestExpectation {
         creationToken = XCTestExpectation.nextMonotonicallyIncreasingToken()
         creationSourceLocation = SourceLocation(file: file, line: line)
     }
-
+    
     /// Marks an expectation as having been met. It's an error to call this
     /// method on an expectation that has already been fulfilled, or when the
     /// test case that vended the expectation has already completed.
@@ -252,37 +241,36 @@ open class XCTestExpectation {
     ///   explicit values for `file` and `line`.
     open func fulfill(_ file: StaticString = #file, line: Int = #line) {
         let sourceLocation = SourceLocation(file: file, line: line)
-
         let didFulfillHandler: (() -> Void)? = XCTWaiter.subsystemQueue.sync {
             // FIXME: Objective-C XCTest emits failures when expectations are
             //        fulfilled after the test cases that generated those
             //        expectations have completed. Similarly, this should cause an
             //        error as well.
-
+            
             if queue_isFulfilled, _assertForOverFulfill, let testCase = XCTCurrentTestCase {
                 testCase.recordFailure(
                     description: "API violation - multiple calls made to XCTestExpectation.fulfill() for \(queue_expectationDescription).",
                     at: sourceLocation,
                     expected: false)
-
+                
                 return nil
             }
-
+            
             if queue_fulfill(sourceLocation: sourceLocation) {
                 return queue_didFulfillHandler
             } else {
                 return nil
             }
         }
-
+        
         didFulfillHandler?()
     }
-
+    
     private func queue_fulfill(sourceLocation: SourceLocation) -> Bool {
         dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
-
+        
         numberOfFulfillments += 1
-
+        
         if numberOfFulfillments == queue_expectedFulfillmentCount {
             queue_isFulfilled = true
             _fulfillmentSourceLocation = sourceLocation
@@ -292,15 +280,15 @@ open class XCTestExpectation {
             return false
         }
     }
-
+    
     internal func didBeginWaiting() {
         // Override point for subclasses
     }
-
+    
     internal func cleanUp() {
         // Override point for subclasses
     }
-
+    
 }
 
 extension XCTestExpectation: Equatable {

@@ -1,54 +1,27 @@
 public struct XCTPerformanceMetric : RawRepresentable, Equatable, Hashable {
     public let rawValue: String
-    
     public init(_ rawValue: String) {
         self.rawValue = rawValue
     }
-    
     public init(rawValue: String) {
         self.rawValue = rawValue
     }
 }
 
 public extension XCTPerformanceMetric {
-    /// Records wall clock time in seconds between `startMeasuring`/`stopMeasuring`.
     static let wallClockTime = XCTPerformanceMetric(rawValue: WallClockTimeMetric.name)
 }
 
-/// The following methods are called from within a test method to carry out 
-/// performance testing on blocks of code.
+// 性能测试的相关方法.
 public extension XCTestCase {
     
-    /// The names of the performance metrics to measure when invoking `measure(block:)`. 
-    /// Returns `XCTPerformanceMetric_WallClockTime` by default. Subclasses can
-    /// override this to change the behavior of `measure(block:)`
     class var defaultPerformanceMetrics: [XCTPerformanceMetric] {
         return [.wallClockTime]
     }
     
-    /// Call from a test method to measure resources (`defaultPerformanceMetrics`)
-    /// used by the block in the current process.
-    ///
-    ///     func testPerformanceOfMyFunction() {
-    ///         measure {
-    ///             // Do that thing you want to measure.
-    ///             MyFunction();
-    ///         }
-    ///     }
-    ///
-    /// - Parameter block: A block whose performance to measure.
-    /// - Bug: The `block` param should have no external label, but there seems
-    ///   to be a swiftc bug that causes issues when such a parameter comes
-    ///   after a defaulted arg. See https://bugs.swift.org/browse/SR-1483 This
-    ///   API incompatibility with Apple XCTest can be worked around in practice 
-    ///   by using trailing closure syntax when calling this method.
-    /// - Note: Whereas Apple XCTest determines the file and line number of
-    ///   measurements by using symbolication, this implementation opts to take
-    ///   `file` and `line` as parameters instead. As a result, the interface to
-    ///   these methods are not exactly identical between these environments. To 
-    ///   ensure compatibility of tests between swift-corelibs-xctest and Apple
-    ///   XCTest, it is not recommended to pass explicit values for `file` and `line`.
-    func measure(file: StaticString = #file, line: Int = #line, block: () -> Void) {
+    func measure(file: StaticString = #file,
+                 line: Int = #line,
+                 block: () -> Void) {
         measureMetrics(type(of: self).defaultPerformanceMetrics,
                        automaticallyStartMeasuring: true,
                        file: file,
@@ -100,12 +73,21 @@ public extension XCTestCase {
     ///   these methods are not exactly identical between these environments. To
     ///   ensure compatibility of tests between swift-corelibs-xctest and Apple
     ///   XCTest, it is not recommended to pass explicit values for `file` and `line`.
-    func measureMetrics(_ metrics: [XCTPerformanceMetric], automaticallyStartMeasuring: Bool, file: StaticString = #file, line: Int = #line, for block: () -> Void) {
+    func measureMetrics(_ metrics: [XCTPerformanceMetric],
+                        automaticallyStartMeasuring: Bool,
+                        file: StaticString = #file,
+                        line: Int = #line,
+                        for block: () -> Void) {
         guard _performanceMeter == nil else {
             return recordAPIViolation(description: "Can only record one set of metrics per test method.", file: file, line: line)
         }
         
-        PerformanceMeter.measureMetrics(metrics.map({ $0.rawValue }), delegate: self, file: file, line: line) { meter in
+        // 在统一的一个地方, 进行监测.
+        PerformanceMeter.measureMetrics(metrics.map({ $0.rawValue }),
+                                        delegate: self,
+                                        file: file,
+                                        line: line)
+        { meter in
             self._performanceMeter = meter
             if automaticallyStartMeasuring {
                 meter.startMeasuring(file: file, line: line)
@@ -139,7 +121,7 @@ public extension XCTestCase {
     ///   XCTest, it is not recommended to pass explicit values for `file` and `line`.
     func stopMeasuring(file: StaticString = #file, line: Int = #line) {
         guard let performanceMeter = _performanceMeter, !performanceMeter.didFinishMeasuring else {
-            return recordAPIViolation(description: "Cannot stop measuring. stopMeasuring() is only supported from a block passed to measureMetrics(...).", file: file, line: line)
+            return recordAPIViolation(description: "Cannot stop measuring. is only supported from a block passed to measureMetrics(...).", file: file, line: line)
         }
         performanceMeter.stopMeasuring(file: file, line: line)
     }
