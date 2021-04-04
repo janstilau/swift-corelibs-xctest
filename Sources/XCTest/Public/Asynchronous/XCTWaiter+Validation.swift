@@ -31,6 +31,7 @@ extension XCTWaiter {
         case incomplete
     }
     
+    // 在这里, 核验 waiter 所记录的 expections 是否已经达到了 complete 的状态.
     static func validateExpectations<ExpectationType: XCTWaiterValidatableExpectation>(_ expectations: [ExpectationType], dueToTimeout didTimeOut: Bool, enforceOrder: Bool) -> ValidationResult<ExpectationType> {
         var unfulfilledExpectations = [ExpectationType]()
         var fulfilledExpectations = [ExpectationType]()

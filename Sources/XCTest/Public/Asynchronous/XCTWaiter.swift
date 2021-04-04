@@ -67,6 +67,7 @@ open class XCTWaiter {
         case interrupted
     }
     
+    // 这里, 使用 enum, 让数据的组织方式, 变得更加的清晰. 具有状态管理的共用体.
     private enum State: Equatable {
         case ready
         case waiting(state: Waiting)
@@ -148,44 +149,29 @@ open class XCTWaiter {
         _delegate = delegate
     }
     
-    /// Wait on an array of expectations for up to the specified timeout, and optionally specify whether they
-    /// must be fulfilled in the given order. May return early based on fulfillment of the waited on expectations.
-    ///
-    /// - Parameter expectations: The expectations to wait on.
-    /// - Parameter timeout: The maximum total time duration to wait on all expectations.
-    /// - Parameter enforceOrder: Specifies whether the expectations must be fulfilled in the order
-    ///   they are specified in the `expectations` Array. Default is false.
-    /// - Parameter file: The file name to use in the error message if
-    ///   expectations are not fulfilled before the given timeout. Default is the file
-    ///   containing the call to this method. It is rare to provide this
-    ///   parameter when calling this method.
-    /// - Parameter line: The line number to use in the error message if the
-    ///   expectations are not fulfilled before the given timeout. Default is the line
-    ///   number of the call to this method in the calling file. It is rare to
-    ///   provide this parameter when calling this method.
-    ///
-    /// - Note: Whereas Objective-C XCTest determines the file and line
-    ///   number of the "wait" call using symbolication, this implementation
-    ///   opts to take `file` and `line` as parameters instead. As a result,
-    ///   the interface to these methods are not exactly identical between
-    ///   these environments. To ensure compatibility of tests between
-    ///   swift-corelibs-xctest and Apple XCTest, it is not recommended to pass
-    ///   explicit values for `file` and `line`.
+    
+    /*
+     Wait 的主要思路
+     
+     首先, 将自己处于 State.Waiting 的状态. 在这个过程里面, 会配置每个 expection 的 fulfill 回调, 就是到 waiter 里面来判断, 是不是所有的 expection 都达到了完成状态. 最终, 会影响要 isFinish 的状态.
+     然后, 调用 runLoop 的 run 方法, 卡住当前的 codeFlow. 在 while 循环里面, 根据 isFinish, 和 timeout 来决定, 是否一值让 runloop 继续运行.
+     跳出 runloop 之后, 检查所有的 expections 的状态, 和退出 runloop 的原因. 如果没有达到完成的状态, 那么通知 testCase 记录, 没有达到 success 的结果.
+     
+     所以, 异步测试, 还是要等. 
+     */
     @discardableResult
     open func wait(for expectations: [XCTestExpectation], timeout: TimeInterval, enforceOrder: Bool = false, file: StaticString = #file, line: Int = #line) -> Result {
+        
+        // 首先, 判断一下 expectations 里面不能有重复的数据. 这里之所以不用 set, 是因为 API 设计的时候, 有着 order 的考虑.
         precondition(Set(expectations).count == expectations.count, "API violation - each expectation can appear only once in the 'expectations' parameter.")
         
+        // 这里, 因为同名, 所以使用了 self.
         self.timeout = timeout
         waitSourceLocation = SourceLocation(file: file, line: line)
-        let runLoop = RunLoop.current
         
+        // 初始化了状态, 为 waiting 状态.
+        let runLoop = RunLoop.current
         XCTWaiter.subsystemQueue.sync {
-            precondition(state == .ready, "API violation - wait(...) has already been called on this waiter.")
-            
-            let previouslyWaitedOnExpectations = expectations.filter { $0.queue_hasBeenWaitedOn }
-            let previouslyWaitedOnExpectationDescriptions = previouslyWaitedOnExpectations.map { $0.queue_expectationDescription }.joined(separator: "`, `")
-            precondition(previouslyWaitedOnExpectations.isEmpty, "API violation - expectations can only be waited on once, `\(previouslyWaitedOnExpectationDescriptions)` have already been waited on.")
-            
             let waitingState = State.Waiting(
                 enforceOrder: enforceOrder,
                 expectations: expectations,
@@ -194,7 +180,6 @@ open class XCTWaiter {
             queue_configureExpectations(expectations)
             state = .waiting(state: waitingState)
             self.runLoop = runLoop
-            
             queue_validateExpectationFulfillment(dueToTimeout: false)
         }
         
@@ -202,9 +187,7 @@ open class XCTWaiter {
         manager.startManaging(self, timeout: timeout)
         self.manager = manager
         
-        // Begin the core wait loop.
-        // 这里, 并没有说不在调度这个线程了, 而是不断的调用 runLoop 的 run 方法.
-        // 这样, runloop 还可以继续执行, 只是后面的代码会在这里卡掉.
+        // 使用 runloop 来阻止 code flow.
         let timeoutTimestamp = Date.timeIntervalSinceReferenceDate + timeout
         while !isFinished {
             let remaining = timeoutTimestamp - Date.timeIntervalSinceReferenceDate
@@ -227,12 +210,6 @@ open class XCTWaiter {
             
             guard case let .finished(finishedState) = state else { fatalError("Unexpected state: \(state)") }
             return finishedState.result
-        }
-        
-        delegateQueue.sync {
-            // DO NOT REMOVE ME
-            // This empty block, executed synchronously, ensures that inflight delegate callbacks from the
-            // internal queue have been processed before wait returns.
         }
         
         return result
@@ -268,6 +245,7 @@ open class XCTWaiter {
         dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
         
         for expectation in expectations {
+            //  expectation 的 fulFill 的回调在这里设置的.
             expectation.queue_didFulfillHandler = { [weak self, unowned expectation] in
                 self?.expectationWasFulfilled(expectation)
             }
@@ -276,11 +254,15 @@ open class XCTWaiter {
     }
     
     private func queue_validateExpectationFulfillment(dueToTimeout: Bool) {
-        dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
+        
+        
         guard case let .waiting(waitingState) = state else { return }
         
+        // 在这里, 抽取出所有已经完成的 expection, 
         let validatableExpectations = waitingState.expectations.map { ValidatableXCTestExpectation(expectation: $0) }
-        let validationResult = XCTWaiter.validateExpectations(validatableExpectations, dueToTimeout: dueToTimeout, enforceOrder: waitingState.enforceOrder)
+        let validationResult = XCTWaiter.validateExpectations(validatableExpectations,
+                                                              dueToTimeout: dueToTimeout,
+                                                              enforceOrder: waitingState.enforceOrder)
         
         switch validationResult {
         case .complete:
@@ -343,13 +325,9 @@ open class XCTWaiter {
 }
 
 private extension XCTWaiter {
+    // 不断的调用 runLoop
     func primitiveWait(using runLoop: RunLoop, duration timeout: TimeInterval) {
-        // The contract for `primitiveWait(for:)` explicitly allows waiting for a shorter period than requested
-        // by the `timeout` argument. Only run for a short time in case `cancelPrimitiveWait()` was called and
-        // issued `CFRunLoopStop` just before we reach this point.
         let timeIntervalToRun = min(0.1, timeout)
-        
-        // RunLoop.run(mode:before:) should have @discardableResult <rdar://problem/45371901>
         _ = runLoop.run(mode: .default, before: Date(timeIntervalSinceNow: timeIntervalToRun))
     }
     
@@ -380,6 +358,7 @@ extension XCTWaiter: CustomStringConvertible {
 }
 
 extension XCTWaiter: ManageableWaiter {
+    
     var isFinished: Bool {
         return XCTWaiter.subsystemQueue.sync {
             switch state {

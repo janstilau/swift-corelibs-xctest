@@ -1,7 +1,6 @@
 
 
 open class XCTestExpectation {
-    
     private static var currentMonotonicallyIncreasingToken: UInt64 = 0
     private static func queue_nextMonotonicallyIncreasingToken() -> UInt64 {
         dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
@@ -75,16 +74,13 @@ open class XCTestExpectation {
         }
     }
     
-    /// The number of times `fulfill()` must be called on the expectation in order for it
-    /// to report complete fulfillment to its waiter. Default is 1.
-    /// This value must be greater than 0 and is not meaningful if combined with `isInverted`.
+    // 所以, 这其实是一个计算属性, 真正的值是 queue_expectedFulfillmentCount
+    // 这个计算属性的作用就是, 在 XCTWaiter.subsystemQueue 里面, 进行 get, set 操作.
     open var expectedFulfillmentCount: Int {
         get {
             return XCTWaiter.subsystemQueue.sync { queue_expectedFulfillmentCount }
         }
         set {
-            precondition(newValue > 0, "API violation - fulfillment count must be greater than 0.")
-            
             XCTWaiter.subsystemQueue.sync {
                 precondition(!queue_hasBeenWaitedOn, "API violation - cannot set expectedFulfillmentCount on '\(queue_expectationDescription)' after already waiting on it.")
                 queue_expectedFulfillmentCount = newValue
@@ -108,13 +104,7 @@ open class XCTestExpectation {
         }
     }
     
-    /// If set, calls to fulfill() after the expectation has already been fulfilled - exceeding the fulfillment
-    /// count - will cause a fatal error and halt process execution. Default is false (disabled).
-    ///
-    /// - Note: This is the legacy behavior of expectations created through APIs on the ObjC version of XCTestCase
-    ///   because that version raises ObjC exceptions (which may be caught) instead of causing a fatal error.
-    ///   In this version of XCTest, no expectation ever has this property set to true (enabled) by default, it
-    ///   must be opted-in to explicitly.
+    // assertForOverFulfill 是一个计算属性, get, set 里面, 都是为了提供 XCTWaiter.subsystemQueue.sync 操作.
     open var assertForOverFulfill: Bool {
         get {
             return XCTWaiter.subsystemQueue.sync { _assertForOverFulfill }
@@ -210,49 +200,25 @@ open class XCTestExpectation {
         }
     }
     
-    /// Initializes a new expectation with a description of the condition it is checking.
-    ///
-    /// - Parameter description: A human-readable string used to describe the condition the expectation is checking.
     public init(description: String = "no description provided", file: StaticString = #file, line: Int = #line) {
         _expectationDescription = description
         creationToken = XCTestExpectation.nextMonotonicallyIncreasingToken()
         creationSourceLocation = SourceLocation(file: file, line: line)
     }
     
-    /// Marks an expectation as having been met. It's an error to call this
-    /// method on an expectation that has already been fulfilled, or when the
-    /// test case that vended the expectation has already completed.
-    ///
-    /// - Parameter file: The file name to use in the error message if
-    ///   expectations are not met before the given timeout. Default is the file
-    ///   containing the call to this method. It is rare to provide this
-    ///   parameter when calling this method.
-    /// - Parameter line: The line number to use in the error message if the
-    ///   expectations are not met before the given timeout. Default is the line
-    ///   number of the call to this method in the calling file. It is rare to
-    ///   provide this parameter when calling this method.
-    ///
-    /// - Note: Whereas Objective-C XCTest determines the file and line
-    ///   number the expectation was fulfilled using symbolication, this
-    ///   implementation opts to take `file` and `line` as parameters instead.
-    ///   As a result, the interface to these methods are not exactly identical
-    ///   between these environments. To ensure compatibility of tests between
-    ///   swift-corelibs-xctest and Apple XCTest, it is not recommended to pass
-    ///   explicit values for `file` and `line`.
+    // 这里, expection 的 fulfill 怎么影响到 waiter 里面的 runloop 的.
     open func fulfill(_ file: StaticString = #file, line: Int = #line) {
+        
         let sourceLocation = SourceLocation(file: file, line: line)
+        // 不是很明白, 这种提前定义后面调用到底有什么意义. 直接调用不得了.
+        // 如果, 后面还需要重用, 这么做还有一点意义, 但是后面就是直接调用了.
+        // 为了让变量名, 展示这段代码的含义???
         let didFulfillHandler: (() -> Void)? = XCTWaiter.subsystemQueue.sync {
-            // FIXME: Objective-C XCTest emits failures when expectations are
-            //        fulfilled after the test cases that generated those
-            //        expectations have completed. Similarly, this should cause an
-            //        error as well.
-            
             if queue_isFulfilled, _assertForOverFulfill, let testCase = XCTCurrentTestCase {
                 testCase.recordFailure(
                     description: "API violation - multiple calls made to XCTestExpectation.fulfill() for \(queue_expectationDescription).",
                     at: sourceLocation,
                     expected: false)
-                
                 return nil
             }
             
@@ -267,10 +233,8 @@ open class XCTestExpectation {
     }
     
     private func queue_fulfill(sourceLocation: SourceLocation) -> Bool {
-        dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))
-        
         numberOfFulfillments += 1
-        
+        // 如果, 当前已经实现的数量, 大于了 queue_expectedFulfillmentCount, 才能算是满足条件了.
         if numberOfFulfillments == queue_expectedFulfillmentCount {
             queue_isFulfilled = true
             _fulfillmentSourceLocation = sourceLocation
@@ -282,11 +246,9 @@ open class XCTestExpectation {
     }
     
     internal func didBeginWaiting() {
-        // Override point for subclasses
     }
     
     internal func cleanUp() {
-        // Override point for subclasses
     }
     
 }
