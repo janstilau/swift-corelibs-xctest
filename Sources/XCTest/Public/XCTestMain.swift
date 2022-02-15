@@ -15,19 +15,19 @@
 // Note that we are re-exporting Foundation so tests importing XCTest don't need
 // to import it themselves. This is consistent with the behavior of Apple XCTest
 #if os(macOS)
-    #if USE_FOUNDATION_FRAMEWORK
-    @_exported import Foundation
-    #else
-    @_exported import SwiftFoundation
-    #endif
+#if USE_FOUNDATION_FRAMEWORK
+@_exported import Foundation
 #else
-    @_exported import Foundation
+@_exported import SwiftFoundation
+#endif
+#else
+@_exported import Foundation
 #endif
 
 #if canImport(Darwin)
-    import Darwin
+import Darwin
 #elseif canImport(Glibc)
-    import Glibc
+import Glibc
 #endif
 
 /// Starts a test run for the specified test cases.
@@ -73,9 +73,9 @@ public func XCTMain(
     observers: [XCTestObservation]
 ) -> Never {
     let testBundle = Bundle.main
-
+    
     let executionMode = ArgumentParser(arguments: arguments).executionMode
-
+    
     // Apple XCTest behaves differently if tests have been filtered:
     // - The root `XCTestSuite` is named "Selected tests" instead of
     //   "All tests".
@@ -90,12 +90,12 @@ public func XCTMain(
         rootTestSuite = XCTestSuite(name: "Selected tests")
         currentTestSuite = rootTestSuite
     }
-
+    
     let filter = TestFiltering(selectedTestNames: executionMode.selectedTestNames)
     TestFiltering.filterTests(testCases, filter: filter.selectedTestFilter)
         .map(XCTestCaseSuite.init)
         .forEach(currentTestSuite.addTest)
-
+    
     switch executionMode {
     case .list(type: .humanReadable):
         TestListing(testSuite: rootTestSuite).printTestList()
@@ -115,22 +115,22 @@ public func XCTMain(
               Usage: \(exeName) [OPTION]
                      \(exeName) [TESTCASE]
               Run and report results of test cases.
-
+              
               With no OPTION or TESTCASE, runs all test cases.
-
+              
               OPTIONS:
-
+              
               -l, --list-test              List tests line by line to standard output
                   --dump-tests-json        List tests in JSON to standard output
-
+              
               TESTCASES:
-
+              
                  Run a single test
-
+              
                      > \(exeName) \(sampleTest)
-
+              
                  Run all the tests in \(sampleTests)
-
+              
                      > \(exeName) \(sampleTests)
               """)
         exit(invalidOption == nil ? EXIT_SUCCESS : EXIT_FAILURE)
@@ -140,11 +140,11 @@ public func XCTMain(
         for observer in observers {
             observationCenter.addTestObserver(observer)
         }
-
+        
         observationCenter.testBundleWillStart(testBundle)
         rootTestSuite.run()
         observationCenter.testBundleDidFinish(testBundle)
-
+        
         exit(rootTestSuite.testRun!.totalFailureCount == 0 ? EXIT_SUCCESS : EXIT_FAILURE)
     }
 }

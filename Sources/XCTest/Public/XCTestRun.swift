@@ -144,6 +144,7 @@ open class XCTestRun {
                        "that has already been stopped: \(failureLocation())")
         }
 
+        // 在这记录, 失败的次数.
         if expected {
             failureCount += 1
         } else {

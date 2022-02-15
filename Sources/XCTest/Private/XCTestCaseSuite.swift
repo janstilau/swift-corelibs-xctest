@@ -23,6 +23,7 @@ internal class XCTestCaseSuite: XCTestSuite {
         super.init(name: String(describing: testCaseClass))
 
         for (testName, testClosure) in testCaseEntry.allTests {
+            // 在这, 进行了 testCaseClass 的构建工作. 
             let testCase = testCaseClass.init(name: testName, testClosure: testClosure)
             addTest(testCase)
         }

@@ -13,6 +13,8 @@
 
 /// Prints textual representations of each XCTestObservation event to stdout.
 /// Mirrors the Apple XCTest output exactly.
+
+// 对于 Print 的 Observer 来说, 就是将相关的事件, 打印到控制器而已. 
 internal class PrintObserver: XCTestObservation {
     func testBundleWillStart(_ testBundle: Bundle) {}
 

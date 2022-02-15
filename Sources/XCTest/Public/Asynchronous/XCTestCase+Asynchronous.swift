@@ -225,6 +225,7 @@ internal extension XCTestCase {
     // It is an API violation to create expectations but not wait for them to
     // be completed. Notify the user of a mistake via a test failure.
     func failIfExpectationsNotWaitedFor(_ expectations: [XCTestExpectation]) {
+        // 取出, 所有没有满足的期望值.
         let orderedUnwaitedExpectations = expectations.filter { !$0.hasBeenWaitedOn }.sorted { $0.creationToken < $1.creationToken }
         guard let expectationForFileLineReporting = orderedUnwaitedExpectations.first else {
             return

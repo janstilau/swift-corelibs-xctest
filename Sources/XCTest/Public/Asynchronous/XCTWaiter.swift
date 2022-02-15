@@ -195,6 +195,7 @@ open class XCTWaiter {
         waitSourceLocation = SourceLocation(file: file, line: line)
         let runLoop = RunLoop.current
 
+        // 在 Watie 之前. 就验证一下当前的状态. 
         XCTWaiter.subsystemQueue.sync {
             precondition(state == .ready, "API violation - wait(...) has already been called on this waiter.")
 
@@ -219,6 +220,7 @@ open class XCTWaiter {
         self.manager = manager
 
         // Begin the core wait loop.
+        // Waiter 的最最主要的能力, 就是这里了, 能够使用 Runloop 保住程序不退出,
         let timeoutTimestamp = Date.timeIntervalSinceReferenceDate + timeout
         while !isFinished {
             let remaining = timeoutTimestamp - Date.timeIntervalSinceReferenceDate
@@ -317,7 +319,6 @@ open class XCTWaiter {
 
         case .incomplete:
             break
-
         }
     }
 

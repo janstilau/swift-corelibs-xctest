@@ -29,7 +29,7 @@ private enum _XCTAssertion {
     case fail
     case throwsError
     case noThrow
-
+    
     var name: String? {
         switch(self) {
         case .equal: return "XCTAssertEqual"
@@ -58,14 +58,14 @@ private enum _XCTAssertionResult {
     case success
     case expectedFailure(String?)
     case unexpectedFailure(Swift.Error)
-
+    
     var isExpected: Bool {
         switch self {
         case .unexpectedFailure(_): return false
         default: return true
         }
     }
-
+    
     func failureDescription(_ assertion: _XCTAssertion) -> String {
         let explanation: String
         switch self {
@@ -74,7 +74,7 @@ private enum _XCTAssertionResult {
         case .expectedFailure(_): explanation = "failed"
         case .unexpectedFailure(let error): explanation = "threw error \"\(error)\""
         }
-
+        
         if let name = assertion.name {
             return "\(name) \(explanation)"
         } else {
@@ -90,7 +90,7 @@ private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion, message: @autoclo
     } catch {
         result = .unexpectedFailure(error)
     }
-
+    
     switch result {
     case .success:
         return
@@ -366,7 +366,7 @@ public func XCTAssertNotNil(_ expression: @autoclosure () throws -> Any?, _ mess
 public func XCTUnwrap<T>(_ expression: @autoclosure () throws -> T?, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) throws -> T {
     var value: T?
     var caughtErrorOptional: Swift.Error?
-
+    
     _XCTEvaluateAssertion(.unwrap, message: message(), file: file, line: line) {
         do {
             value = try expression()
@@ -374,14 +374,14 @@ public func XCTUnwrap<T>(_ expression: @autoclosure () throws -> T?, _ message: 
             caughtErrorOptional = error
             return .unexpectedFailure(error)
         }
-
+        
         if value != nil {
             return .success
         } else {
             return .expectedFailure("expected non-nil value of type \"\(T.self)\"")
         }
     }
-
+    
     if let unwrappedValue = value {
         return unwrappedValue
     } else if let error = caughtErrorOptional {
@@ -410,7 +410,7 @@ public func XCTFail(_ message: String = "", file: StaticString = #file, line: UI
 
 public func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line, _ errorHandler: (_ error: Swift.Error) -> Void = { _ in }) {
     let rethrowsOverload: (() throws -> T, () -> String, StaticString, UInt, (Swift.Error) throws -> Void) throws -> Void = XCTAssertThrowsError
-
+    
     try? rethrowsOverload(expression, message, file, line, errorHandler)
 }
 
@@ -422,7 +422,7 @@ public func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T, _
         } catch {
             caughtErrorOptional = error
         }
-
+        
         if let caughtError = caughtErrorOptional {
             try errorHandler(caughtError)
             return .success
@@ -435,7 +435,7 @@ public func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T, _
 public func XCTAssertNoThrow<T>(_ expression: @autoclosure () throws -> T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
     _XCTEvaluateAssertion(.noThrow, message: message(), file: file, line: line) {
         do {
-             _ = try expression()
+            _ = try expression()
             return .success
         } catch let error {
             return .expectedFailure("threw error \"\(error)\"")

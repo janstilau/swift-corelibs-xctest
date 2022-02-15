@@ -14,6 +14,7 @@
 /// A block with the test code to be invoked when the test runs.
 ///
 /// - Parameter testCase: the test case associated with the current test code.
+// 如何进行执行单元测试. 
 public typealias XCTestCaseClosure = (XCTestCase) throws -> Void
 
 /// This is a compound type used by `XCTMain` to represent tests to run. It combines an
@@ -94,6 +95,7 @@ open class XCTestCase: XCTest {
             fatalError("Wrong XCTestRun class.")
         }
 
+        // 在这里, 修改了全局变量的值. 如果失败了, 就记录该值的信息.
         XCTCurrentTestCase = self
         testRun.start()
         invokeTest()
